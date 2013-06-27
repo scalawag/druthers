@@ -178,7 +178,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
         case at => throw new IllegalStateException(s"internal error: flag $flag should never use this method")
       }
 
-      cfg.multipleValueDelimiter match {
+      cfg.valueDelimiter match {
         case Some(delim) =>
           stringValue.split(delim).filter(_.length > 0 ).foreach { individual =>
             addConvertedValue(flag,individual,converter)
@@ -195,7 +195,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
         case Some(flag) =>
           Seq(flag)
         case None =>
-          if ( cfg.abbreviation ) {
+          if ( cfg.abbreviations ) {
             flags.filter(_.key.startsWith(key))
           } else {
             Seq()
@@ -222,7 +222,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     def forNoFlag(noKey:String) = {
       finishKey
       noKey match {
-        case NoPrefixRE(key) if cfg.booleanNegatedByNo =>
+        case NoPrefixRE(key) if cfg.booleansNegatedByNoPrefix =>
           getFlags(key).filter(_.argType == ArgType.BOOLEAN) match {
             case List() =>
               false
@@ -341,7 +341,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
                 forFlag(k) { flag =>
                   // This expression basically just says that, if there's more stuff following
-                  // the key is expecting a value or clustering is disabled, then treat the
+                  // the key and we're allow to COLLAPSE TODO the key is expecting a value or clustering is disabled, then treat the
                   // following stuff as the value for the key.  Otherwise, consume the key
                   // and wait for its value to follow.  Note that, in some cases, this will
                   // cause an error to be raised but that's exactly what should happen in

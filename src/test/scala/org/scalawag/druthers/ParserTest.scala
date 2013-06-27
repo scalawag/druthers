@@ -6,6 +6,9 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FunSuite
 
 abstract class ParserTest extends FunSuite with ShouldMatchers {
+  val SHORT = ParserConfiguration.withShortKeys
+  val LONG = ParserConfiguration.withLongKeys
+
   def succeed[T:TypeTag](args:String,opts:T,remains:String,config:ParserConfiguration):Unit =
     succeed(args,opts,remains,new Parser[T](config))
 

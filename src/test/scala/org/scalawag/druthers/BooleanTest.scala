@@ -18,71 +18,71 @@ import BooleanTest._
 class BooleanTest extends ParserTest {
 
   test("short - present") {
-    succeed[Opts]("-a",ShortOptions()) { case(opts,remains) =>
+    succeed[Opts]("-a",SHORT) { case(opts,remains) =>
       opts should be (Opts(true))
       remains should be (Array.empty)
     }
   }
 
   test("short - present with trailing bare word") {
-    succeed[Opts]("-a bare",Opts(true),"bare",ShortOptions())
+    succeed[Opts]("-a bare",Opts(true),"bare",SHORT)
   }
 
   test("short - present with trailing option") {
-    succeed[Opts]("-a -b",Opts(true,true),"",ShortOptions())
+    succeed[Opts]("-a -b",Opts(true,true),"",SHORT)
   }
 
   test("short - absent") {
-    succeed[Opts]("",Opts(),"",ShortOptions())
+    succeed[Opts]("",Opts(),"",SHORT)
   }
 
   test("short - cluster") {
-    succeed[Opts]("-ab",Opts(true,true),"",ShortOptions().withClustering(true))
+    succeed[Opts]("-ab",Opts(true,true),"",SHORT.withClustering)
   }
 
   test("short - clustering fails with clustering disabled") {
-    fail[Opts]("-ab",ShortOptions()) {
+    fail[Opts]("-ab",SHORT) {
       case Seq(UnexpectedValue(flag,"b")) =>
         flag.key should be ("a")
     }
   }
 
   test("long - present") {
-    succeed[Opts]("--aopt",Opts(true),"",LongOptions())
+    succeed[Opts]("--aopt",Opts(true),"",LONG)
   }
 
   test("long - absent") {
-    succeed[Opts]("",Opts(),"",LongOptions())
+    succeed[Opts]("",Opts(),"",LONG)
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=true",LongOptions()) {
+    fail[Opts]("--aopt=true",LONG) {
       case Seq(UnexpectedValue(flag,"true")) =>
         flag.key should be ("aopt")
     }
   }
 
   test("long - specify illegal value (empty)") {
-    fail[Opts]("--aopt=",LongOptions()) {
+    fail[Opts]("--aopt=",LONG) {
       case Seq(UnexpectedValue(flag,"")) =>
         flag.key should be ("aopt")
     }
   }
 
   test("long - no to negate") {
-    succeed[Opts]("--no-aopt --bopt --no-copt",Opts(false,true,false),"",LongOptions().withBooleanNegatedByNo())
+    succeed[Opts]("--no-aopt --bopt --no-copt",Opts(false,true,false),"",LONG.withBooleansNegatedByNoPrefix)
   }
 
   test("long - unambiguous abbreviation") {
-    succeed[Opts]("--a",Opts(true),"",LongOptions().withAbbreviation())
+    succeed[Opts]("--a",Opts(true),"",LONG.withAbbreviations)
   }
 
   test("long - unambiguous abbreviation, subset of another key") {
-    succeed[AmbiguousOpts]("--aa",AmbiguousOpts(true,false),"",LongOptions().withAbbreviation())
+    succeed[AmbiguousOpts]("--aa",AmbiguousOpts(true,false),"",LONG.withAbbreviations)
   }
 
   test("long - ambiguous abbreviation") {
-    fail[AmbiguousOpts]("--a=",LongOptions().withAbbreviation()) {
+    fail[AmbiguousOpts]("--a=",LONG.withAbbreviations) {
       case Seq(AmbiguousKey("--a",Seq(flag1,flag2))) =>
         flag1.key should be ("aa")
         flag2.key should be ("aaa")
@@ -90,11 +90,11 @@ class BooleanTest extends ParserTest {
   }
 
   test("long - negative unambiguous abbreviation") {
-    succeed[Opts]("--no-a --b",Opts(false,true),"",LongOptions().withAbbreviation().withBooleanNegatedByNo())
+    succeed[Opts]("--no-a --b",Opts(false,true),"",LONG.withAbbreviations.withBooleansNegatedByNoPrefix)
   }
 
   test("long - negative ambiguous abbreviation") {
-    fail[AmbiguousOpts]("--no-a",LongOptions().withAbbreviation().withBooleanNegatedByNo()) {
+    fail[AmbiguousOpts]("--no-a",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) {
       case Seq(AmbiguousKey("--no-a",Seq(flag1,flag2))) =>
         flag1.key should be ("aa")
         flag2.key should be ("aaa")
@@ -102,11 +102,11 @@ class BooleanTest extends ParserTest {
   }
 
   test("long - positive keys take precedence") {
-    succeed[AmbiguousNoOpts]("--no-a",AmbiguousNoOpts(false,true),"",LongOptions().withBooleanNegatedByNo())
+    succeed[AmbiguousNoOpts]("--no-a",AmbiguousNoOpts(false,true),"",LONG.withBooleansNegatedByNoPrefix)
   }
 
   test("long - 'no' prefix doesn't conflict for non-boolean fields") {
-    succeed[UnambiguousNoOpts]("--no-a",UnambiguousNoOpts(None,false),"",LongOptions().withBooleanNegatedByNo().withAbbreviation())
+    succeed[UnambiguousNoOpts]("--no-a",UnambiguousNoOpts(None,false),"",LONG.withAbbreviations.withBooleansNegatedByNoPrefix)
   }
 }
 
