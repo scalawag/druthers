@@ -451,7 +451,12 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     }
   }
 
-  def unapply(args:Array[String]):Some[(C,Array[String])] = Some(parse(args))
+  def unapply(args:Array[String]):Option[(C,Array[String])] =
+    try {
+      Some(parse(args))
+    } catch {
+      case ex:UsageException if cfg.quietMode => None
+    }
 
   private def uncamelCase(s:String) = s flatMap { c =>
     if ( c.isUpper )

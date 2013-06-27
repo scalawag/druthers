@@ -45,7 +45,7 @@ sealed abstract class ParserConfiguration protected (val useLongKeys:Boolean,
 }
 
 case class LongOptions(override val stopAtFirstBareWord:Boolean = false,
-                       override val quietMode:Boolean = true,
+                       override val quietMode:Boolean = false,
                        override val valueDelimiter:Option[String] = None,
                        override val collapsedValues:Option[Boolean] = None,
                        override val booleansNegatedByNoPrefix:Boolean = false,
@@ -71,7 +71,7 @@ case class LongOptions(override val stopAtFirstBareWord:Boolean = false,
 }
 
 case class ShortOptions(override val stopAtFirstBareWord:Boolean = false,
-                        override val quietMode:Boolean = true,
+                        override val quietMode:Boolean = false,
                         override val valueDelimiter:Option[String] = None,
                         override val collapsedValues:Option[Boolean] = None,
                         override val clustering:Boolean = false)
