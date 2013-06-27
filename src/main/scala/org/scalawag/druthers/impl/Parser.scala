@@ -268,7 +268,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
           log.debug(s"Got counter key ${flag.key}, incrementing value")
           incrementValue(flag)
         case _ =>
-          if ( ! cfg.useLongKeys && cfg.spaceDelimitsValue == Some(false) ) {
+          if ( ! cfg.useLongKeys && cfg.mustCollapseValues ) {
             errors :+= MissingValue(flag)
           } else {
             log.debug(s"Got key ${flag.key}, waiting for value(s)")
@@ -311,13 +311,13 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
             // found an arg that starts with the option prefix
             if ( cfg.useLongKeys ) {
               // try to separate it into key and value at '=' if that's possible
-              if ( cfg.equalsDelimitsValue.getOrElse(true) ) {
+              if ( cfg.mayCollapseValues ) {
                 bareHead.split("=",2) match {
                   // arg is separable into key and value with '='
                   case Array(key,value) =>
                     forFlag(key)(consumeKeyAndValue(_,value))
                   // arg contains no '=' and it's required
-                  case Array(key) if cfg.equalsDelimitsValue == Some(true) =>
+                  case Array(key) if cfg.mustCollapseValues =>
                     forFlag(key) { flag =>
                       errors :+= MissingValue(flag)
                     }
@@ -346,7 +346,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
                   // and wait for its value to follow.  Note that, in some cases, this will
                   // cause an error to be raised but that's exactly what should happen in
                   // those cases.
-                  if ( !rest.isEmpty && !cfg.spaceMustDelimitValue && ( requiresValue(flag) || !cfg.clustering ) ) {
+                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( requiresValue(flag) || !cfg.clustering ) ) {
                     consumeKeyAndValue(flag,rest)
                     rest = ""
                   } else {

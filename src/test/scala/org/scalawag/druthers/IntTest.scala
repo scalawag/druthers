@@ -16,29 +16,29 @@ class IntTest extends ParserTest {
     }
   }
 
-  test("short - space must delimit value, fail") {
-    fail[Opts]("-a 42 -b7",ShortOptions().withSpaceDelimitsValue(Some(true))) {
+  test("short - collapse prohibited, fail") {
+    fail[Opts]("-a 42 -b7",ShortOptions().withCollapseValues(Some(false))) {
       case Seq(MissingValue(flag),UnknownKey("-7")) =>
         flag.key should be ("b")
     }
   }
 
-  test("short - space must delimit value, pass") {
-    succeed[Opts]("-a 42 -b 7",ShortOptions().withSpaceDelimitsValue(Some(true))) { case(opts,remains) =>
+  test("short - collapse prohibited, pass") {
+    succeed[Opts]("-a 42 -b 7",ShortOptions().withCollapseValues(Some(false))) { case(opts,remains) =>
       opts should be (Opts(42,7))
       remains should be (Array.empty)
     }
   }
 
-  test("short - space must not delimit value, fail") {
-    fail[Opts]("-a 42 -b7",ShortOptions().withSpaceDelimitsValue(Some(false))) {
+  test("short - collapse required, fail") {
+    fail[Opts]("-a 42 -b7",ShortOptions().withCollapseValues(Some(true))) {
       case Seq(MissingValue(flag)) =>
         flag.key should be ("a")
     }
   }
 
-  test("short - space must not delimit value, pass") {
-    succeed[Opts]("-a42 -b7",ShortOptions().withSpaceDelimitsValue(Some(false))) { case(opts,remains) =>
+  test("short - collapse required, pass") {
+    succeed[Opts]("-a42 -b7",ShortOptions().withCollapseValues(Some(true))) { case(opts,remains) =>
       opts should be (Opts(42,7))
       remains should be (Array.empty)
     }
@@ -73,28 +73,28 @@ class IntTest extends ParserTest {
     succeed[Opts]("--aopt 42 --bopt=7",Opts(42,7),"",LongOptions())
   }
 
-  test("long - equals required, fail") {
-    fail[Opts]("--aopt=42 --bopt 7",LongOptions().withEqualDelimitsValue(Some(true))) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("bopt")
+  test("long - collapse prohibited, fail") {
+    fail[Opts]("--aopt=42 --bopt 7",LongOptions().withCollapseValues(Some(false))) {
+      case Seq(UnknownKey("--aopt=42")) => // should fail like this
     }
   }
 
-  test("long - equals required, pass") {
-    succeed[Opts]("--aopt=42 --bopt=7",LongOptions().withEqualDelimitsValue(Some(true))) { case(opts,remains) =>
+  test("long - collapse prohibited, pass") {
+    succeed[Opts]("--aopt 42 --bopt 7",LongOptions().withCollapseValues(Some(false))) { case(opts,remains) =>
       opts should be (Opts(42,7))
       remains should be (Array.empty)
     }
   }
 
-  test("long - equals forbidden, fail") {
-    fail[Opts]("--aopt=42 --bopt 7",LongOptions().withEqualDelimitsValue(Some(false))) {
-      case Seq(UnknownKey("--aopt=42")) => // should fail like this
+  test("long - collapse required, fail") {
+    fail[Opts]("--aopt=42 --bopt 7",LongOptions().withCollapseValues(Some(true))) {
+      case Seq(MissingValue(flag)) =>
+        flag.key should be ("bopt")
     }
   }
 
-  test("long - equals must not delimit value, pass") {
-    succeed[Opts]("--aopt 42 --bopt 7",LongOptions().withEqualDelimitsValue(Some(false))) { case(opts,remains) =>
+  test("long - collapse required, pass") {
+    succeed[Opts]("--aopt=42 --bopt=7",LongOptions().withCollapseValues(Some(true))) { case(opts,remains) =>
       opts should be (Opts(42,7))
       remains should be (Array.empty)
     }
