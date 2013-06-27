@@ -37,6 +37,7 @@ object Parser {
   private val INTEGER_TYPE = typeOf[Int]
   private val FLOAT_TYPE = typeOf[Float]
   private val BOOLEAN_TYPE = typeOf[Boolean]
+  private val COUNTER_TYPE = typeOf[Counter]
 
   private val USAGE_TYPE = typeOf[Usage]
   private val VALUE_TERM = newTermName("value")
@@ -74,12 +75,12 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
           ArgType.INTEGER
         else if ( argTypeSignature <:< FLOAT_TYPE )
           ArgType.FLOAT
-        else if ( argTypeSignature <:< BOOLEAN_TYPE )
+        else if ( argTypeSignature <:< BOOLEAN_TYPE && cardinality == Cardinality.REQUIRED )
           ArgType.BOOLEAN
+        else if ( argTypeSignature <:< COUNTER_TYPE && cardinality == Cardinality.REQUIRED )
+          ArgType.COUNTER
         else
           throw new IllegalArgumentException(s"unsupported constructor parameter type for '$name': $typeSignature")
-
-      // TODO: vomit on Seq[Boolean]?
 
       val usage = param.annotations.find(_.tpe =:= USAGE_TYPE).flatMap(_.javaArgs.get(VALUE_TERM)).map {
         case LiteralArgument(Constant(s:String)) => s
@@ -412,7 +413,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
       flag.argType match {
         case ArgType.BOOLEAN => value.getOrElse(false)
-        case ArgType.COUNTER => value.getOrElse(0)
+        case ArgType.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
         case _ => flag.cardinality match {
           case Cardinality.MULTIPLE => value.getOrElse(Seq.empty)
           case Cardinality.OPTIONAL => value.getOrElse(None)
