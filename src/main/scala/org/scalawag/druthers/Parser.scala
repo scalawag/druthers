@@ -38,6 +38,8 @@ object Parser {
 
   private val USAGE_TYPE = typeOf[Usage]
   private val VALUE_TERM = newTermName("value")
+
+  private val NOTHING_TYPE = typeOf[Nothing]
 }
 
 class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
@@ -110,6 +112,9 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
   private lazy val constructor = {
 
+    if ( typeOf[C] <:< NOTHING_TYPE )
+      throw new IllegalArgumentException(s"target class not specified, add a type parameter to Parser")
+
     val constructors = typeOf[C].declarations.toSeq.collect {
       case m:MethodSymbol if m.isConstructor => m
     }
@@ -117,7 +122,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     constructors match {
       case Seq(only) => only
       case seq =>
-        throw new IllegalArgumentException("target class must have exactly one constructor, yours has " + seq.length)
+        throw new IllegalArgumentException(s"target class must have exactly one constructor, yours (${typeOf[C].typeSymbol.name}) has ${seq.length}")
     }
 
   }
