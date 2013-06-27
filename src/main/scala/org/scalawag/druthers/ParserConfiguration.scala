@@ -2,17 +2,21 @@ package org.scalawag.druthers
 
 object ParserConfiguration
 
-abstract class ParserConfiguration(val useLongKeys:Boolean,
-                                   val optionPrefix:String,
-                                   val stopAtFirstBareWord:Boolean = false,
-                                   val throwUsageErrors:Boolean = true,
-                                   val multipleValueDelimiter:Option[String] = None,
-                                   val collapseValues:Option[Boolean] = None,
-                                   // LongOpts-specific
-                                   val booleanNegatedByNo:Boolean = false,
-                                   val abbreviation:Boolean = false,
-                                   // ShortOpts-specific
-                                   val clustering:Boolean = false) {
+sealed abstract class ParserConfiguration(val useLongKeys:Boolean,
+                                          val optionPrefix:String,
+                                          val stopAtFirstBareWord:Boolean = false,
+                                          val throwUsageErrors:Boolean = true,
+                                          val multipleValueDelimiter:Option[String] = None,
+                                          val collapseValues:Option[Boolean] = None,
+                                          // LongOpts-specific
+                                          val booleanNegatedByNo:Boolean = false,
+                                          val abbreviation:Boolean = false,
+                                          // ShortOpts-specific
+                                          val clustering:Boolean = false) {
+  require(!clustering || !useLongKeys,"can't use clustering with long keys")
+  require(!booleanNegatedByNo || useLongKeys,"can't use no- prefixes with short keys")
+  require(!abbreviation || useLongKeys,"can't use abbreviations with short keys")
+
   val mayCollapseValues = collapseValues.getOrElse(true)
   val mustCollapseValues = collapseValues.getOrElse(false)
   val mayNotCollapseValues = !mustCollapseValues
