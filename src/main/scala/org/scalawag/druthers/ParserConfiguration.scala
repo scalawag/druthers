@@ -23,17 +23,17 @@ object ParserConfiguration {
  * @param clustering whether multiple short keys can be clustered into a single argument
  */
 
-sealed abstract class ParserConfiguration(val useLongKeys:Boolean,
-                                          val optionPrefix:String,
-                                          val stopAtFirstBareWord:Boolean = false,
-                                          val quietMode:Boolean = false,
-                                          val valueDelimiter:Option[String] = None,
-                                          val collapsedValues:Option[Boolean] = None,
-                                          // LongOpts-specific
-                                          val booleansNegatedByNoPrefix:Boolean = false,
-                                          val abbreviations:Boolean = false,
-                                          // ShortOpts-specific
-                                          val clustering:Boolean = false) {
+sealed abstract class ParserConfiguration protected (val useLongKeys:Boolean,
+                                                     val optionPrefix:String,
+                                                     val stopAtFirstBareWord:Boolean = false,
+                                                     val quietMode:Boolean = false,
+                                                     val valueDelimiter:Option[String] = None,
+                                                     val collapsedValues:Option[Boolean] = None,
+                                                     // LongOpts-specific
+                                                     val booleansNegatedByNoPrefix:Boolean = false,
+                                                     val abbreviations:Boolean = false,
+                                                     // ShortOpts-specific
+                                                     val clustering:Boolean = false) {
   require(!clustering || !useLongKeys,"can't use clustering with long keys")
   require(!booleansNegatedByNoPrefix || useLongKeys,"can't use no- prefixes with short keys")
   require(!abbreviations || useLongKeys,"can't use abbreviations with short keys")
