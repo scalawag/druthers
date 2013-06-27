@@ -7,7 +7,6 @@ object QuietModeTest {
 import QuietModeTest._
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
-import org.scalawag.druthers.impl.Parser
 
 class QuietModeTest extends FunSuite with ShouldMatchers {
   private val config = ParserConfiguration.withShortKeys

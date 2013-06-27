@@ -2,7 +2,6 @@ package org.scalawag.druthers
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FunSuite
-import org.scalawag.druthers.impl.Parser
 
 object InvalidClassTest {
   case class EverythingGood(a:Boolean,

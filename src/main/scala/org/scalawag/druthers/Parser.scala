@@ -1,12 +1,9 @@
-package org.scalawag.druthers.impl
+package org.scalawag.druthers
 
-import org.scalawag.druthers._
 import scala.reflect.runtime.universe._
 import scala.util.Try
 import org.scalawag.timber.api.style.slf4j
 import scala.util.Failure
-import scala.Some
-import org.scalawag.druthers.ShortOptions
 import scala.util.Success
 import java.io.PrintWriter
 

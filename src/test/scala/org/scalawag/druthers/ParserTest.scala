@@ -1,7 +1,6 @@
 package org.scalawag.druthers
 
 import scala.reflect.runtime.universe.TypeTag
-import org.scalawag.druthers.impl.Parser
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FunSuite
 
