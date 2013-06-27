@@ -48,7 +48,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
   // Identifies the flags implied by the container class.
 
-  lazy val (flags,flagMap) = {
+  val (flags,flagMap) = {
 
     val params = constructor.paramss match {
       case List(head) => head
