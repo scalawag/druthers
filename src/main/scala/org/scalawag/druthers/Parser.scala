@@ -12,7 +12,13 @@ object Parser {
                   name:String,
                   argType:ArgType.Value,
                   cardinality:Cardinality.Value,
-                  usage:Option[String])
+                  usage:Option[String]) {
+    def requiresValue = argType match {
+      case ArgType.BOOLEAN => false
+      case ArgType.COUNTER => false
+      case _ => true
+    }
+  }
 
   object Cardinality extends Enumeration {
     val OPTIONAL = Value
@@ -240,12 +246,6 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
       }
     }
 
-    def requiresValue(flag:Flag) = flag.argType match {
-      case ArgType.BOOLEAN => false
-      case ArgType.COUNTER => false
-      case _ => true
-    }
-
     def consumeKeyAndValue(flag:Flag,value:String) {
       finishKey
 
@@ -348,7 +348,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
                   // and wait for its value to follow.  Note that, in some cases, this will
                   // cause an error to be raised but that's exactly what should happen in
                   // those cases.
-                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( requiresValue(flag) || !cfg.clustering ) ) {
+                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( flag.requiresValue || !cfg.clustering ) ) {
                     consumeKeyAndValue(flag,rest)
                     rest = ""
                   } else {
