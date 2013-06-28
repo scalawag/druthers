@@ -6,6 +6,7 @@ import org.scalawag.timber.api.style.slf4j
 import scala.util.Failure
 import scala.util.Success
 import java.io.PrintWriter
+import scala.annotation.tailrec
 
 object Parser {
   case class Flag(key:String,
@@ -46,6 +47,8 @@ object Parser {
   private val VALUE_TERM = newTermName("value")
 
   private val NOTHING_TYPE = typeOf[Nothing]
+
+  private val WordRE = "( *)([^ ]+)(.*)".r
 }
 
 class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
@@ -447,10 +450,70 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     (constructorMirror.apply(constructorArgs:_*).asInstanceOf[C],remains.toArray)
   }
 
-  lazy val usage = {
-    flags map { flag =>
-      s"  --${flag.name} <n>   ${flag.usage.getOrElse("")}"
+  def usage(totalWidth:Int = 120,indent:Int = 2,gap:Int = 6) = {
+    val column1 = flags map { f =>
+      Seq(
+        Seq(cfg.optionPrefix,f.key),
+        f.requiresValue match {
+          case false => Seq()
+          case true =>
+            Seq(
+              " <",
+              if ( cfg.useLongKeys ) {
+                f.argType match {
+                  case ArgType.STRING  => "s"
+                  case ArgType.INTEGER => "n"
+                  case ArgType.FLOAT   => "f"
+                }
+              } else {
+                f.name
+              },
+              ">"
+            )
+        }
+      ).flatten.mkString
     }
+
+    val c1width = column1.map(_.length).max
+    val c2start = indent + c1width + gap
+    val c2width = totalWidth - c2start
+
+    val column2 = flags map { f =>
+      val extra = f.cardinality match {
+        case Cardinality.MULTIPLE => Some(" (repeatable)")
+        case Cardinality.REQUIRED => Some(" (required)")
+        case _ => None
+      }
+
+      wordWrap(Seq(f.usage,extra).flatten.mkString,c2width)
+    }
+
+    val c1format = s"%${indent}s%-${c1width}s%${gap}s%s".format("",_:String,"",_:String)
+    val c2format = s"%${c2start}s%s".format("",_:String)
+
+    column1.zip(column2) flatMap { case (c1,c2s) =>
+      c1format(c1,c2s.head) +: c2s.tail.map(c2format)
+    }
+  }
+
+
+  private def wordWrap(text:String,width:Int) = {
+    @tailrec
+    def helper(in:String,lines:Seq[String] = Seq.empty):Seq[String] = in match {
+      case WordRE(space,word,rest) =>
+        lines match {
+          case Seq() =>
+            helper(rest,Seq(word))
+          case _ =>
+            if ( ( space.length + word.length + lines.head.length ) > width )
+              helper(rest,word +: lines)
+            else
+              helper(rest,( lines.head + space + word ) +: lines.tail)
+        }
+      case _ => lines
+    }
+
+    helper(text).reverse
   }
 
   def unapply(args:Array[String]):Option[(C,Array[String])] =
