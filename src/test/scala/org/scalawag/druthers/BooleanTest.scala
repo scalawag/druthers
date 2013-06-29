@@ -101,7 +101,7 @@ class BooleanTest extends ParserTest {
     }
   }
 
-  test("long - positive keys take precedence") {
+  ignore("long - positive keys take precedence") {
     succeed[AmbiguousNoOpts]("--no-a",AmbiguousNoOpts(false,true),"",LONG.withBooleansNegatedByNoPrefix)
   }
 
