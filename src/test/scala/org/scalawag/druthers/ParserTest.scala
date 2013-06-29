@@ -28,7 +28,7 @@ abstract class ParserTest extends FunSuite with ShouldMatchers {
     fn(intercept[UsageException]((new Parser[T](config)).parse(split(args))).errors)
   }
 
-  private def split(s:String):List[String] =
+  protected def split(s:String):List[String] =
     if ( s.isEmpty )
       Nil
     else
