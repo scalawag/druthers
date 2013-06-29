@@ -8,6 +8,10 @@ scalaVersion := "2.10.2"
 
 scalacOptions ++= Seq("-unchecked","-deprecation","-feature")
 
+// Right now, the reflection stuff is not thread-safe so we have to execute our tests in sequence.
+// See: http://docs.scala-lang.org/overviews/reflection/thread-safety.html
+parallelExecution in Test := false
+
 resolvers += "sonatype-oss-snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
 
 libraryDependencies ++= Seq(
