@@ -407,6 +407,8 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     }
   }
 
+  def parse(args:Array[String]):(C,List[String]) = parse(args.toList)
+
   def parse(args:List[String]):(C,List[String]) = {
     val (valuesMap,remains) = parseInternal(args)
 
@@ -515,6 +517,8 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
     helper(text).reverse
   }
+
+  def unapply(args:Array[String]):Option[(C,List[String])] = unapply(args.toList)
 
   def unapply(args:List[String]):Option[(C,List[String])] =
     try {
