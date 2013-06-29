@@ -12,7 +12,7 @@ class OptionIntTest extends ParserTest {
   test("short - present") {
     succeed[Opts]("-a 42 -b7",SHORT) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -26,7 +26,7 @@ class OptionIntTest extends ParserTest {
   test("short - collapse prohibited, pass") {
     succeed[Opts]("-a 42 -b 7",SHORT.withCollapsedValuesProhibited) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -40,7 +40,7 @@ class OptionIntTest extends ParserTest {
   test("short - collapse required, pass") {
     succeed[Opts]("-a42 -b7",SHORT.withCollapsedValuesRequired) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -51,7 +51,7 @@ class OptionIntTest extends ParserTest {
   test("short - cluster, rest is arg (not other keys)") {
     succeed[Opts]("-a 42 -b7",SHORT.withClustering) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -80,7 +80,7 @@ class OptionIntTest extends ParserTest {
   test("long - collapse prohibited, pass") {
     succeed[Opts]("--aopt 42 --bopt 7",LONG.withCollapsedValuesProhibited) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -94,7 +94,7 @@ class OptionIntTest extends ParserTest {
   test("long - collapse required, pass") {
     succeed[Opts]("--aopt=42 --bopt=7",LONG.withCollapsedValuesRequired) { case(opts,remains) =>
       opts should be (Opts(Some(42),Some(7)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 

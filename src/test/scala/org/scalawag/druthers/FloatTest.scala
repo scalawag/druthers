@@ -12,7 +12,7 @@ class FloatTest extends ParserTest {
   test("short - present") {
     succeed[Opts]("-a 4.2 -b7.1",SHORT) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -26,7 +26,7 @@ class FloatTest extends ParserTest {
   test("short - collapse prohibited, pass") {
     succeed[Opts]("-a 4.2 -b 7.1",SHORT.withCollapsedValuesProhibited) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -40,7 +40,7 @@ class FloatTest extends ParserTest {
   test("short - collapse required, pass") {
     succeed[Opts]("-a4.2 -b7.1",SHORT.withCollapsedValuesRequired) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -53,7 +53,7 @@ class FloatTest extends ParserTest {
   test("short - cluster, rest is arg (not other keys)") {
     succeed[Opts]("-a 4.2 -b7.1",SHORT.withClustering) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -82,7 +82,7 @@ class FloatTest extends ParserTest {
   test("long - collapse prohibited, pass") {
     succeed[Opts]("--aopt 4.2 --bopt 7.1",LONG.withCollapsedValuesProhibited) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -96,7 +96,7 @@ class FloatTest extends ParserTest {
   test("long - collapse required, pass") {
     succeed[Opts]("--aopt=4.2 --bopt=7.1",LONG.withCollapsedValuesRequired) { case(opts,remains) =>
       opts should be (Opts(4.2f,7.1f))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 

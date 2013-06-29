@@ -12,14 +12,14 @@ class CounterTest extends ParserTest {
   test("short - present") {
     succeed[Opts]("-a",SHORT) { case(opts,remains) =>
       opts should be (Opts(Counter(1)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
   test("short - present twice") {
     succeed[Opts]("-a",SHORT) { case(opts,remains) =>
       opts should be (Opts(Counter(1)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
@@ -49,7 +49,7 @@ class CounterTest extends ParserTest {
   test("long - present twice") {
     succeed[Opts]("--aopt --aopt",LONG) { case(opts,remains) =>
       opts should be (Opts(Counter(2)))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 

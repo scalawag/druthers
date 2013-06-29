@@ -12,27 +12,27 @@ abstract class ParserTest extends FunSuite with ShouldMatchers {
     succeed(args,opts,remains,new Parser[T](config))
 
   def succeed[T:TypeTag](args:String,opts:T,remains:String,parser:Parser[T]) {
-    val (o,r) = parser.parse(array(args))
+    val (o,r) = parser.parse(split(args))
 
     o should be (opts)
-    r should be (array(remains))
+    r should be (split(remains))
   }
 
-  def succeed[T:TypeTag](args:String,config:ParserConfiguration)(fn:PartialFunction[(T,Array[String]),Unit]) {
+  def succeed[T:TypeTag](args:String,config:ParserConfiguration)(fn:PartialFunction[(T,List[String]),Unit]) {
     val parser = new Parser[T](config)
-    val (o,r) = parser.parse(array(args))
+    val (o,r) = parser.parse(split(args))
     fn((o,r))
   }
 
   def fail[T:TypeTag](args:String,config:ParserConfiguration)(fn:PartialFunction[Seq[UsageError],Unit]) {
-    fn(intercept[UsageException]((new Parser[T](config)).parse(array(args))).errors)
+    fn(intercept[UsageException]((new Parser[T](config)).parse(split(args))).errors)
   }
 
-  private def array(s:String):Array[String] =
+  private def split(s:String):List[String] =
     if ( s.isEmpty )
-      Array.empty
+      Nil
     else
-      s.split("\\s+")
+      s.split("\\s+").toList
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */

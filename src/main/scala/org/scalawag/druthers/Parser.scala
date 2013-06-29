@@ -59,7 +59,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
   val (flags,flagMap) = {
 
     val params = constructor.paramss match {
-      case List(head) => head
+      case Seq(head) => head
       case _ =>
         throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
     }
@@ -124,9 +124,9 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     if ( typeOf[C] <:< NOTHING_TYPE )
       throw new IllegalArgumentException(s"target class not specified, add a type parameter to Parser")
 
-    val constructors = typeOf[C].declarations.toSeq.collect {
+    val constructors = typeOf[C].declarations.collect {
       case m:MethodSymbol if m.isConstructor => m
-    }
+    }.toSeq
 
     constructors match {
       case Seq(only) => only
@@ -136,13 +136,13 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
   }
 
-  def parseInternal(args:Array[String]) = {
-    var remainingArgs = args.toSeq
+  def parseInternal(args:List[String]) = {
+    var remainingArgs = args
     var inOptionCluster = false
     var currentFlag:Option[Flag] = None
     var values:Map[Flag,Any] = Map.empty
-    var bareWords:Seq[String] = Seq.empty
-    var errors:Seq[UsageError] = Seq.empty
+    var bareWords:List[String] = Nil
+    var errors:List[UsageError] = Nil
 
     def incrementValue(flag:Flag) =
       values.get(flag) match {
@@ -209,7 +209,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
           if ( cfg.abbreviations ) {
             flags.filter(_.key.startsWith(key))
           } else {
-            Seq()
+            Nil
           }
       }
     }
@@ -218,10 +218,10 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     def forFlag(key:String)(fn:Flag => Unit) = {
       finishKey
       getFlags(key) match {
-        case List(flag) =>
+        case Seq(flag) =>
           fn(flag)
           true
-        case List() =>
+        case Nil =>
           errors :+= UnknownKey(cfg.optionPrefix + key)
           false
         case all =>
@@ -235,9 +235,9 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
       noKey match {
         case NoPrefixRE(key) if cfg.booleansNegatedByNoPrefix =>
           getFlags(key).filter(_.argType == ArgType.BOOLEAN) match {
-            case List() =>
+            case Nil =>
               false
-            case List(flag) =>
+            case Seq(flag) =>
               addValue(flag,false)
               true
             case all =>
@@ -306,11 +306,11 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
       currentFlag match {
         case None => remainingArgs match {
 
-          case Seq() =>
+          case Nil =>
             log.debug(s"No more tokens, returning")
             done = true
 
-          case Seq(head,tail@_*) if head.startsWith(cfg.optionPrefix) && head.length > cfg.optionPrefix.length =>
+          case head :: tail if head.startsWith(cfg.optionPrefix) && head.length > cfg.optionPrefix.length =>
             val bareHead = head.substring(cfg.optionPrefix.length)
 
             // found an arg that starts with the option prefix
@@ -364,32 +364,32 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
             }
             remainingArgs = tail
 
-          case Seq(head,tail@_*) if currentFlag.isDefined =>
+          case head :: tail if currentFlag.isDefined =>
             // TODO: handle other cases like multiple appearances set multiple values
             addStringValue(currentFlag.get,head)
             currentFlag = None
             remainingArgs = tail
 
-          case Seq(head,tail@_*) if inOptionCluster =>
+          case head :: tail if inOptionCluster =>
             // First character should be treated as a option key
             forFlag(head.head.toString)(consumeKey)
 
-          case Seq(head,tail@_*) if cfg.stopAtFirstBareWord =>
+          case head :: tail if cfg.stopAtFirstBareWord =>
             done = true
 
-          case Seq(head,tail@_*) =>
+          case head :: tail =>
             bareWords :+= head
             remainingArgs = tail
         }
 
         case Some(flag) => remainingArgs match {
-          case Seq() =>
+          case Nil =>
             finishKey
 
-          case Seq(head,tail@_*) if head.startsWith(cfg.optionPrefix) =>
+          case head :: tail if head.startsWith(cfg.optionPrefix) =>
             finishKey
 
-          case Seq(head,tail@_*) =>
+          case head :: tail =>
             log.debug(s"Collecting value $head for flag $flag")
             addStringValue(flag,head)
             currentFlag = None
@@ -407,11 +407,11 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     }
   }
 
-  def parse(args:Array[String]):(C,Array[String]) = {
+  def parse(args:List[String]):(C,List[String]) = {
     val (valuesMap,remains) = parseInternal(args)
 
     // TODO: combine this with the one in parseInternal for one list of errors
-    var errors:Seq[UsageError] = Seq.empty
+    var errors:List[UsageError] = Nil
 
     val constructorArgs = flags map { flag =>
       val value = valuesMap.get(flag)
@@ -420,7 +420,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
         case ArgType.BOOLEAN => value.getOrElse(false)
         case ArgType.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
         case _ => flag.cardinality match {
-          case Cardinality.MULTIPLE => value.getOrElse(Seq.empty)
+          case Cardinality.MULTIPLE => value.getOrElse(Nil)
           case Cardinality.OPTIONAL => value.getOrElse(None)
           case Cardinality.REQUIRED =>
             value match {
@@ -447,7 +447,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     val classSymbol = typeOf[C].typeSymbol.asClass
     val classMirror = mirror.reflectClass(classSymbol)
     val constructorMirror = classMirror.reflectConstructor(constructor)
-    (constructorMirror.apply(constructorArgs:_*).asInstanceOf[C],remains.toArray)
+    (constructorMirror.apply(constructorArgs:_*).asInstanceOf[C],remains)
   }
 
   def usage(totalWidth:Int = 120,indent:Int = 2,gap:Int = 6) = {
@@ -455,7 +455,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
       Seq(
         Seq(cfg.optionPrefix,f.key),
         f.requiresValue match {
-          case false => Seq()
+          case false => Nil
           case true =>
             Seq(
               " <",
@@ -499,10 +499,10 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
 
   private def wordWrap(text:String,width:Int) = {
     @tailrec
-    def helper(in:String,lines:Seq[String] = Seq.empty):Seq[String] = in match {
+    def helper(in:String,lines:Seq[String] = Nil):Seq[String] = in match {
       case WordRE(space,word,rest) =>
         lines match {
-          case Seq() =>
+          case Nil =>
             helper(rest,Seq(word))
           case _ =>
             if ( ( space.length + word.length + lines.head.length ) > width )
@@ -516,7 +516,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
     helper(text).reverse
   }
 
-  def unapply(args:Array[String]):Option[(C,Array[String])] =
+  def unapply(args:List[String]):Option[(C,List[String])] =
     try {
       Some(parse(args))
     } catch {

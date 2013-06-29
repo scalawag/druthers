@@ -20,7 +20,7 @@ class BooleanTest extends ParserTest {
   test("short - present") {
     succeed[Opts]("-a",SHORT) { case(opts,remains) =>
       opts should be (Opts(true))
-      remains should be (Array.empty)
+      remains should be (Nil)
     }
   }
 
