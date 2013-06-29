@@ -11,9 +11,9 @@ scalacOptions ++= Seq("-unchecked","-deprecation","-feature")
 resolvers += "sonatype-oss-snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
 
 libraryDependencies ++= Seq(
-  "org.scalawag.timber" % "timber-api" % "0.3-SNAPSHOT",
+  "org.scalawag.timber" % "timber-api" % "0.3-SNAPSHOT" changing,
   "org.scala-lang" % "scala-reflect" % "2.10.2",
-  "org.scalawag.timber" % "timber" % "0.3-SNAPSHOT" % "test",
+  "org.scalawag.timber" % "timber" % "0.3-SNAPSHOT" % "test" changing,
   "org.mockito" % "mockito-all" % "1.9.5" % "test",
   "org.scalatest" %% "scalatest" % "1.9.1" % "test"
 )
