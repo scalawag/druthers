@@ -1,6 +1,7 @@
 package org.scalawag.druthers
 
 import Parser.Flag
+import CommandParser.Argument
 
 sealed trait UsageError
 
@@ -30,6 +31,18 @@ case class AmbiguousKey(key:String,possibilities:Seq[Flag]) extends UsageError {
 
 case class MissingRequiredKey(flag:Flag) extends UsageError {
   override val toString = s"flag $flag not specified"
+}
+
+case class MissingArgument(argument:Argument) extends UsageError {
+  override val toString = s"argument $argument not specified"
+}
+
+case class InvalidArgument(argument:Argument,value:String,reason:String) extends UsageError {
+  override val toString = s"unable to find a suitable value for argument $argument: $value ($reason)"
+}
+
+case class ExtraneousValues(values:List[String]) extends UsageError {
+  override val toString = s"extraneous values provided: ${values.mkString(" ")}"
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
