@@ -10,6 +10,15 @@ object Parser {
     val MULTIPLE = Value
   }
 
+  val STRING_TYPE = typeOf[String]
+  val INTEGER_TYPE = typeOf[Int]
+  val FLOAT_TYPE = typeOf[Float]
+  val BOOLEAN_TYPE = typeOf[Boolean]
+  val COUNTER_TYPE = typeOf[Counter]
+
+  private val SEQUENCE_TYPE = typeOf[Seq[Any]]
+  private val OPTION_TYPE = typeOf[Option[Any]]
+
   private val USAGE_TYPE = typeOf[Usage]
   private val VALUE_TERM = newTermName("value")
 
@@ -36,6 +45,21 @@ class Parser[C:TypeTag] {
     }
 
   }
+
+  protected[this] def getParams(method:MethodSymbol) =
+    constructor.paramss match {
+      case Seq(head) => head
+      case _ =>
+        throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
+    }
+
+  protected[this] def getCardinalityAndValueType(tpe:Type) =
+    if ( tpe.erasure =:= SEQUENCE_TYPE )
+      (Cardinality.MULTIPLE,tpe.asInstanceOf[TypeRef].args.head)
+    else if ( tpe.erasure =:= OPTION_TYPE )
+      (Cardinality.OPTIONAL,tpe.asInstanceOf[TypeRef].args.head)
+    else
+      (Cardinality.REQUIRED,tpe)
 
   protected[this] def getUsage(symbol:Symbol) =
     symbol.annotations.find(_.tpe =:= USAGE_TYPE).flatMap(_.javaArgs.get(VALUE_TERM)).map {

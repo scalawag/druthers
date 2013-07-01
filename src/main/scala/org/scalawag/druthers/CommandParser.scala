@@ -4,30 +4,28 @@ import scala.reflect.runtime.universe._
 import org.scalawag.timber.api.style.slf4j
 import scala.util.{Try, Success, Failure}
 import java.io.PrintWriter
-import org.scalawag.druthers.Parser.Cardinality
+import org.scalawag.druthers.Parser._
+import org.scalawag.druthers.CommandParser.ArgumentSpec.Type
 
 object CommandParser {
   case class Options[C](name:String,parser:OptionsParser[C])
 
+  object ArgumentSpec {
+    object Type extends Enumeration {
+      val STRING = Value
+      val INTEGER = Value
+      val FLOAT = Value
+      val BOOLEAN = Value
+      val OPTIONS = Value
+    }
+  }
+
   case class ArgumentSpec(name:String,
-                          argType:ArgType.Value,
+                          argType:ArgumentSpec.Type.Value,
                           cardinality:Cardinality.Value,
                           usage:Option[String])
 
-  object ArgType extends Enumeration {
-    val STRING = Value
-    val INTEGER = Value
-    val FLOAT = Value
-    val BOOLEAN = Value
-    val OPTIONS = Value
-  }
 
-  private val SEQUENCE_TYPE = typeOf[Seq[Any]]
-  private val OPTION_TYPE = typeOf[Option[Any]]
-  private val STRING_TYPE = typeOf[String]
-  private val INTEGER_TYPE = typeOf[Int]
-  private val FLOAT_TYPE = typeOf[Float]
-  private val BOOLEAN_TYPE = typeOf[Boolean]
 }
 
 class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
@@ -35,11 +33,7 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
 
   val arguments = {
 
-    val params = constructor.paramss match {
-      case Seq(head) => head
-      case _ =>
-        throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
-    }
+    val params = getParams(constructor)
 
     params map { param =>
       val name = param.name.toString
@@ -47,33 +41,27 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
 
       val usage = getUsage(param)
 
-      val (cardinality,argTypeSignature) =
-        if ( typeSignature.erasure =:= SEQUENCE_TYPE )
-          (Cardinality.MULTIPLE,typeSignature.asInstanceOf[TypeRef].args.head)
-        else if ( typeSignature.erasure =:= OPTION_TYPE )
-          (Cardinality.OPTIONAL,typeSignature.asInstanceOf[TypeRef].args.head)
-        else
-          (Cardinality.REQUIRED,typeSignature)
+      val (cardinality,valueTypeSignature) = getCardinalityAndValueType(typeSignature)
 
-      val argType =
-        if ( argTypeSignature <:< STRING_TYPE )
-          ArgType.STRING
-        else if ( argTypeSignature <:< INTEGER_TYPE )
-          ArgType.INTEGER
-        else if ( argTypeSignature <:< FLOAT_TYPE )
-          ArgType.FLOAT
-        else if ( argTypeSignature <:< BOOLEAN_TYPE )
-          ArgType.BOOLEAN
+      val valueType =
+        if ( valueTypeSignature =:= STRING_TYPE )
+          Type.STRING
+        else if ( valueTypeSignature =:= INTEGER_TYPE )
+          Type.INTEGER
+        else if ( valueTypeSignature =:= FLOAT_TYPE )
+          Type.FLOAT
+        else if ( valueTypeSignature =:= BOOLEAN_TYPE )
+          Type.BOOLEAN
         else
-          ArgType.OPTIONS
+          Type.OPTIONS
 
-      if ( argType == ArgType.OPTIONS ) {
-        if ( param.typeSignature =:= typeOf[P1] )
+      if ( valueType == Type.OPTIONS ) {
+        if ( typeSignature =:= typeOf[P1] )
           Options(name,new OptionsParser[P1](cfg))
         else
-          throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${param.typeSignature}")
+          throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${typeSignature}")
       } else {
-        ArgumentSpec(name,argType,cardinality,usage)
+        ArgumentSpec(name,valueType,cardinality,usage)
       }
     }
   }
@@ -99,10 +87,10 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
           val conversion = args match {
             case head :: _ =>
               val c = argType match {
-                case ArgType.STRING => Try(head)
-                case ArgType.INTEGER => Try(head.toInt)
-                case ArgType.FLOAT => Try(head.toFloat)
-                case ArgType.BOOLEAN => Try(head.toBoolean)
+                case Type.STRING => Try(head)
+                case Type.INTEGER => Try(head.toInt)
+                case Type.FLOAT => Try(head.toFloat)
+                case Type.BOOLEAN => Try(head.toBoolean)
               }
 
               c.recoverWith {

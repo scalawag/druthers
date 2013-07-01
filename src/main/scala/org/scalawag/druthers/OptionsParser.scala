@@ -7,80 +7,67 @@ import scala.util.Failure
 import scala.util.Success
 import java.io.PrintWriter
 import scala.annotation.tailrec
-import org.scalawag.druthers.Parser.Cardinality
+import org.scalawag.druthers.Parser._
 
 object OptionsParser {
-  case class OptionSpec(key:String,
-                        name:String,
-                        argType:ArgType.Value,
-                        cardinality:Cardinality.Value,
-                        usage:Option[String]) {
-    def requiresValue = argType match {
-      case ArgType.BOOLEAN => false
-      case ArgType.COUNTER => false
-      case _ => true
+
+  object OptionSpec {
+    object Type extends Enumeration {
+      val STRING = Value
+      val INTEGER = Value
+      val FLOAT = Value
+      val BOOLEAN = Value
+      val COUNTER = Value
     }
   }
 
-  object ArgType extends Enumeration {
-    val STRING = Value
-    val INTEGER = Value
-    val FLOAT = Value
-    val BOOLEAN = Value
-    val COUNTER = Value
+  case class OptionSpec(key:String,
+                        name:String,
+                        argType:OptionSpec.Type.Value,
+                        cardinality:Cardinality.Value,
+                        usage:Option[String]) {
+    def requiresValue = argType match {
+      case OptionSpec.Type.BOOLEAN => false
+      case OptionSpec.Type.COUNTER => false
+      case _ => true
+    }
   }
-
-  private val SEQUENCE_TYPE = typeOf[Seq[Any]]
-  private val OPTION_TYPE = typeOf[Option[Any]]
-  private val STRING_TYPE = typeOf[String]
-  private val INTEGER_TYPE = typeOf[Int]
-  private val FLOAT_TYPE = typeOf[Float]
-  private val BOOLEAN_TYPE = typeOf[Boolean]
-  private val COUNTER_TYPE = typeOf[Counter]
 
   private val WordRE = "( *)([^ ]+)(.*)".r
 }
 
 class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
   import OptionsParser._
+  import OptionSpec.Type
 
   // Identifies the specs implied by the container class.
 
   val (specs,specMap) = {
 
-    val params = constructor.paramss match {
-      case Seq(head) => head
-      case _ =>
-        throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
-    }
+    val params = getParams(constructor)
 
     val specs = params map { param =>
       val name = param.name.toString
       val typeSignature = param.typeSignatureIn(typeOf[C])
 
-      val (cardinality,argTypeSignature) =
-        if ( typeSignature.erasure <:< SEQUENCE_TYPE )
-          (Cardinality.MULTIPLE,typeSignature.asInstanceOf[TypeRef].args.head)
-        else if ( typeSignature.erasure <:< OPTION_TYPE )
-          (Cardinality.OPTIONAL,typeSignature.asInstanceOf[TypeRef].args.head)
-        else
-          (Cardinality.REQUIRED,typeSignature)
+      val usage = getUsage(param)
 
-      val argType =
-        if ( argTypeSignature <:< STRING_TYPE )
-          ArgType.STRING
-        else if ( argTypeSignature <:< INTEGER_TYPE )
-          ArgType.INTEGER
-        else if ( argTypeSignature <:< FLOAT_TYPE )
-          ArgType.FLOAT
-        else if ( argTypeSignature <:< BOOLEAN_TYPE && cardinality == Cardinality.REQUIRED )
-          ArgType.BOOLEAN
-        else if ( argTypeSignature <:< COUNTER_TYPE && cardinality == Cardinality.REQUIRED )
-          ArgType.COUNTER
+      val (cardinality,valueTypeSignature) = getCardinalityAndValueType(typeSignature)
+
+      val valueType =
+        if ( valueTypeSignature =:= STRING_TYPE )
+          Type.STRING
+        else if ( valueTypeSignature =:= INTEGER_TYPE )
+          Type.INTEGER
+        else if ( valueTypeSignature =:= FLOAT_TYPE )
+          Type.FLOAT
+        else if ( valueTypeSignature =:= BOOLEAN_TYPE && cardinality == Cardinality.REQUIRED )
+          Type.BOOLEAN
+        else if ( valueTypeSignature =:= COUNTER_TYPE && cardinality == Cardinality.REQUIRED )
+          Type.COUNTER
         else
           throw new IllegalArgumentException(s"unsupported constructor parameter type for '$name': $typeSignature")
 
-      val usage = getUsage(param)
 
       val key =
         if ( cfg.useLongKeys )
@@ -88,7 +75,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
         else
           name.substring(0,1)
 
-      OptionSpec(key,name,argType,cardinality,usage)
+      OptionSpec(key,name,valueType,cardinality,usage)
     }
 
     val specMap = specs.map( f => f.key -> f ).toMap
@@ -154,9 +141,9 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
 
     def addStringValue(spec:OptionSpec,stringValue:String) {
       val converter:(String => Any) = spec.argType match {
-        case ArgType.STRING => { s:String => s }
-        case ArgType.INTEGER => { s:String => s.toInt }
-        case ArgType.FLOAT => { s:String => s.toFloat }
+        case Type.STRING => { s:String => s }
+        case Type.INTEGER => { s:String => s.toInt }
+        case Type.FLOAT => { s:String => s.toFloat }
         case at => throw new IllegalStateException(s"internal error: spec $spec should never use this method")
       }
 
@@ -205,7 +192,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       finishKey
       noKey match {
         case NoPrefixRE(key) if cfg.booleansNegatedByNoPrefix =>
-          getSpecs(key).filter(_.argType == ArgType.BOOLEAN) match {
+          getSpecs(key).filter(_.argType == Type.BOOLEAN) match {
             case Nil =>
               false
             case Seq(spec) =>
@@ -224,9 +211,9 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       finishKey
 
       spec.argType match {
-        case ArgType.BOOLEAN =>
+        case Type.BOOLEAN =>
           errors :+= UnexpectedValue(spec,value)
-        case ArgType.COUNTER =>
+        case Type.COUNTER =>
           errors :+= UnexpectedValue(spec,value)
         case _ =>
           addStringValue(spec,value)
@@ -237,10 +224,10 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       finishKey
 
       spec.argType match {
-        case ArgType.BOOLEAN =>
+        case Type.BOOLEAN =>
           log.debug(s"Got boolean key ${spec.key}, adding true value")
           addValue(spec,true)
-        case ArgType.COUNTER =>
+        case Type.COUNTER =>
           log.debug(s"Got counter key ${spec.key}, incrementing value")
           incrementValue(spec)
         case _ =>
@@ -390,8 +377,8 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       val value = valuesMap.get(spec)
 
       spec.argType match {
-        case ArgType.BOOLEAN => value.getOrElse(false)
-        case ArgType.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
+        case Type.BOOLEAN => value.getOrElse(false)
+        case Type.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
         case _ => spec.cardinality match {
           case Cardinality.MULTIPLE => value.getOrElse(Nil)
           case Cardinality.OPTIONAL => value.getOrElse(None)
@@ -434,9 +421,9 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
               " <",
               if ( cfg.useLongKeys ) {
                 f.argType match {
-                  case ArgType.STRING  => "s"
-                  case ArgType.INTEGER => "n"
-                  case ArgType.FLOAT   => "f"
+                  case Type.STRING  => "s"
+                  case Type.INTEGER => "n"
+                  case Type.FLOAT   => "f"
                 }
               } else {
                 f.name
