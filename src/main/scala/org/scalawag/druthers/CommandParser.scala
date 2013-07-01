@@ -8,10 +8,10 @@ import java.io.PrintWriter
 object CommandParser {
   case class Options[C](name:String,parser:OptionsParser[C])
 
-  case class Argument(name:String,
-                      argType:ArgType.Value,
-                      cardinality:Cardinality.Value,
-                      usage:Option[String])
+  case class ArgumentSpec(name:String,
+                          argType:ArgType.Value,
+                          cardinality:Cardinality.Value,
+                          usage:Option[String])
 
   object Cardinality extends Enumeration {
     val OPTIONAL = Value
@@ -85,7 +85,7 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
         else
           throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${param.typeSignature}")
       } else {
-        Argument(name,argType,cardinality,usage)
+        ArgumentSpec(name,argType,cardinality,usage)
       }
     }
   }
@@ -122,7 +122,7 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
           else
             Failure(UsageException(List(ExtraneousValues(args))))
 
-        case ( spec@Argument(name,argType,cardinality,_) ) :: _ =>
+        case ( spec@ArgumentSpec(name,argType,cardinality,_) ) :: _ =>
 
           val conversion = args match {
             case head :: _ =>

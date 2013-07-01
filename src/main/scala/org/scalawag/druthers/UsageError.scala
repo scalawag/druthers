@@ -1,7 +1,7 @@
 package org.scalawag.druthers
 
 import OptionsParser.OptionSpec
-import CommandParser.Argument
+import CommandParser.ArgumentSpec
 
 sealed trait UsageError
 
@@ -33,11 +33,11 @@ case class MissingRequiredKey(spec:OptionSpec) extends UsageError {
   override val toString = s"option ${spec.key} not specified"
 }
 
-case class MissingArgument(spec:Argument) extends UsageError {
+case class MissingArgument(spec:ArgumentSpec) extends UsageError {
   override val toString = s"argument '${spec.name}' not specified"
 }
 
-case class InvalidArgument(spec:Argument,value:String,reason:String) extends UsageError {
+case class InvalidArgument(spec:ArgumentSpec,value:String,reason:String) extends UsageError {
   override val toString = s"unable to find a suitable value for argument '${spec.name}': $value ($reason)"
 }
 
