@@ -28,9 +28,6 @@ object CommandParser {
   private val INTEGER_TYPE = typeOf[Int]
   private val FLOAT_TYPE = typeOf[Float]
   private val BOOLEAN_TYPE = typeOf[Boolean]
-
-  private val USAGE_TYPE = typeOf[Usage]
-  private val VALUE_TERM = newTermName("value")
 }
 
 class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
@@ -48,9 +45,7 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
       val name = param.name.toString
       val typeSignature = param.typeSignatureIn(typeOf[C])
 
-      val usage = param.annotations.find(_.tpe =:= USAGE_TYPE).flatMap(_.javaArgs.get(VALUE_TERM)).map {
-        case LiteralArgument(Constant(s:String)) => s
-      }
+      val usage = getUsage(param)
 
       val (cardinality,argTypeSignature) =
         if ( typeSignature.erasure =:= SEQUENCE_TYPE )

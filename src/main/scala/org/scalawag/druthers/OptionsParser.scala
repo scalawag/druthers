@@ -38,9 +38,6 @@ object OptionsParser {
   private val BOOLEAN_TYPE = typeOf[Boolean]
   private val COUNTER_TYPE = typeOf[Counter]
 
-  private val USAGE_TYPE = typeOf[Usage]
-  private val VALUE_TERM = newTermName("value")
-
   private val WordRE = "( *)([^ ]+)(.*)".r
 }
 
@@ -83,9 +80,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
         else
           throw new IllegalArgumentException(s"unsupported constructor parameter type for '$name': $typeSignature")
 
-      val usage = param.annotations.find(_.tpe =:= USAGE_TYPE).flatMap(_.javaArgs.get(VALUE_TERM)).map {
-        case LiteralArgument(Constant(s:String)) => s
-      }
+      val usage = getUsage(param)
 
       val key =
         if ( cfg.useLongKeys )

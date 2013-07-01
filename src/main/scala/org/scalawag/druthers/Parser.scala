@@ -10,6 +10,9 @@ object Parser {
     val MULTIPLE = Value
   }
 
+  private val USAGE_TYPE = typeOf[Usage]
+  private val VALUE_TERM = newTermName("value")
+
   private val NOTHING_TYPE = typeOf[Nothing]
 }
 
@@ -17,7 +20,7 @@ import Parser._
 
 class Parser[C:TypeTag] {
 
-  protected lazy val constructor = {
+  protected[this] lazy val constructor = {
 
     if ( typeOf[C] <:< NOTHING_TYPE )
       throw new IllegalArgumentException(s"target class not specified, add a type parameter to OptionsParser")
@@ -33,5 +36,10 @@ class Parser[C:TypeTag] {
     }
 
   }
+
+  protected[this] def getUsage(symbol:Symbol) =
+    symbol.annotations.find(_.tpe =:= USAGE_TYPE).flatMap(_.javaArgs.get(VALUE_TERM)).map {
+      case LiteralArgument(Constant(s:String)) => s
+    }
 
 }
