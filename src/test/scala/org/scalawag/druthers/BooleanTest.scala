@@ -42,8 +42,8 @@ class BooleanTest extends OptionsParserTest {
 
   test("short - clustering fails with clustering disabled") {
     fail[Opts]("-ab",SHORT) {
-      case Seq(UnexpectedValue(flag,"b")) =>
-        flag.key should be ("a")
+      case Seq(UnexpectedValue(spec,"b")) =>
+        spec.key should be ("a")
     }
   }
 
@@ -57,15 +57,15 @@ class BooleanTest extends OptionsParserTest {
 
   test("long - specify illegal value") {
     fail[Opts]("--aopt=true",LONG) {
-      case Seq(UnexpectedValue(flag,"true")) =>
-        flag.key should be ("aopt")
+      case Seq(UnexpectedValue(spec,"true")) =>
+        spec.key should be ("aopt")
     }
   }
 
   test("long - specify illegal value (empty)") {
     fail[Opts]("--aopt=",LONG) {
-      case Seq(UnexpectedValue(flag,"")) =>
-        flag.key should be ("aopt")
+      case Seq(UnexpectedValue(spec,"")) =>
+        spec.key should be ("aopt")
     }
   }
 
@@ -83,9 +83,9 @@ class BooleanTest extends OptionsParserTest {
 
   test("long - ambiguous abbreviation") {
     fail[AmbiguousOpts]("--a=",LONG.withAbbreviations) {
-      case Seq(AmbiguousKey("--a",Seq(flag1,flag2))) =>
-        flag1.key should be ("aa")
-        flag2.key should be ("aaa")
+      case Seq(AmbiguousKey("--a",Seq(spec1,spec2))) =>
+        spec1.key should be ("aa")
+        spec2.key should be ("aaa")
     }
   }
 
@@ -95,9 +95,9 @@ class BooleanTest extends OptionsParserTest {
 
   test("long - negative ambiguous abbreviation") {
     fail[AmbiguousOpts]("--no-a",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) {
-      case Seq(AmbiguousKey("--no-a",Seq(flag1,flag2))) =>
-        flag1.key should be ("aa")
-        flag2.key should be ("aaa")
+      case Seq(AmbiguousKey("--no-a",Seq(spec1,spec2))) =>
+        spec1.key should be ("aa")
+        spec2.key should be ("aaa")
     }
   }
 

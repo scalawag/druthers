@@ -9,11 +9,11 @@ import java.io.PrintWriter
 import scala.annotation.tailrec
 
 object OptionsParser {
-  case class Flag(key:String,
-                  name:String,
-                  argType:ArgType.Value,
-                  cardinality:Cardinality.Value,
-                  usage:Option[String]) {
+  case class OptionSpec(key:String,
+                        name:String,
+                        argType:ArgType.Value,
+                        cardinality:Cardinality.Value,
+                        usage:Option[String]) {
     def requiresValue = argType match {
       case ArgType.BOOLEAN => false
       case ArgType.COUNTER => false
@@ -54,9 +54,9 @@ object OptionsParser {
 class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
   import OptionsParser._
 
-  // Identifies the flags implied by the container class.
+  // Identifies the specs implied by the container class.
 
-  val (flags,flagMap) = {
+  val (specs,specMap) = {
 
     val params = constructor.paramss match {
       case Seq(head) => head
@@ -64,7 +64,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
         throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
     }
 
-    val flags = params map { param =>
+    val specs = params map { param =>
       val name = param.name.toString
       val typeSignature = param.typeSignatureIn(typeOf[C])
 
@@ -100,15 +100,15 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
         else
           name.substring(0,1)
 
-      Flag(key,name,argType,cardinality,usage)
+      OptionSpec(key,name,argType,cardinality,usage)
     }
 
-    val flagMap = flags.map( f => f.key -> f ).toMap
+    val specMap = specs.map( f => f.key -> f ).toMap
 
-    if ( flagMap.size < flags.size ) {
-      val collisions = flags.groupBy(_.key).flatMap { case (key,flags) =>
-        if ( flags.length > 1 )
-          Some(s"  $key => ${flags.map(_.name).mkString(" ")}")
+    if ( specMap.size < specs.size ) {
+      val collisions = specs.groupBy(_.key).flatMap { case (key,specs) =>
+        if ( specs.length > 1 )
+          Some(s"  $key => ${specs.map(_.name).mkString(" ")}")
         else
           None
       }.toSeq
@@ -116,7 +116,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       throw new IllegalArgumentException(lines.mkString("","\n","\n"))
     }
 
-    (flags,flagMap)
+    (specs,specMap)
   }
 
   private lazy val constructor = {
@@ -139,75 +139,75 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
   def parseInternal(args:List[String]) = {
     var remainingArgs = args
     var inOptionCluster = false
-    var currentFlag:Option[Flag] = None
-    var values:Map[Flag,Any] = Map.empty
+    var currentSpec:Option[OptionSpec] = None
+    var values:Map[OptionSpec,Any] = Map.empty
     var bareWords:List[String] = Nil
     var errors:List[UsageError] = Nil
 
-    def incrementValue(flag:Flag) =
-      values.get(flag) match {
+    def incrementValue(spec:OptionSpec) =
+      values.get(spec) match {
         case None =>
-          values += ( flag -> 1 )
+          values += ( spec -> 1 )
         case Some(existing) =>
-          values += ( flag -> ( existing.asInstanceOf[Int] + 1 ) )
+          values += ( spec -> ( existing.asInstanceOf[Int] + 1 ) )
     }
 
-    def addValue(flag:Flag,value:Any) {
-      values.get(flag) match {
-        case None => flag.cardinality match {
+    def addValue(spec:OptionSpec,value:Any) {
+      values.get(spec) match {
+        case None => spec.cardinality match {
           case Cardinality.MULTIPLE =>
-            values += ( flag -> Seq(value) )
+            values += ( spec -> Seq(value) )
           case Cardinality.OPTIONAL =>
-            values += ( flag -> Some(value) )
+            values += ( spec -> Some(value) )
           case Cardinality.REQUIRED =>
-            values += ( flag -> value )
+            values += ( spec -> value )
         }
 
-        case Some(existing) => flag.cardinality match {
+        case Some(existing) => spec.cardinality match {
           case Cardinality.MULTIPLE =>
-            values += ( flag -> ( existing.asInstanceOf[Seq[Any]] :+ value ) )
+            values += ( spec -> ( existing.asInstanceOf[Seq[Any]] :+ value ) )
           case _ =>
-            errors :+= DuplicateValue(flag,existing,value)
+            errors :+= DuplicateValue(spec,existing,value)
         }
       }
     }
 
-    def addConvertedValue(flag:Flag,stringValue:String,converter:String => Any) {
+    def addConvertedValue(spec:OptionSpec,stringValue:String,converter:String => Any) {
       Try(converter(stringValue)) match {
         case Success(value) =>
-          addValue(flag,value)
+          addValue(spec,value)
         case Failure(ex) =>
-          errors :+= InvalidValue(flag,stringValue,ex.getLocalizedMessage)
+          errors :+= InvalidValue(spec,stringValue,ex.getLocalizedMessage)
       }
     }
 
-    def addStringValue(flag:Flag,stringValue:String) {
-      val converter:(String => Any) = flag.argType match {
+    def addStringValue(spec:OptionSpec,stringValue:String) {
+      val converter:(String => Any) = spec.argType match {
         case ArgType.STRING => { s:String => s }
         case ArgType.INTEGER => { s:String => s.toInt }
         case ArgType.FLOAT => { s:String => s.toFloat }
-        case at => throw new IllegalStateException(s"internal error: flag $flag should never use this method")
+        case at => throw new IllegalStateException(s"internal error: spec $spec should never use this method")
       }
 
       cfg.valueDelimiter match {
         case Some(delim) =>
           stringValue.split(delim).filter(_.length > 0 ).foreach { individual =>
-            addConvertedValue(flag,individual,converter)
+            addConvertedValue(spec,individual,converter)
           }
         case None =>
-          addConvertedValue(flag,stringValue,converter)
+          addConvertedValue(spec,stringValue,converter)
       }
     }
 
     val NoPrefixRE = "no-(.*)".r
 
-    def getFlags(key:String):Seq[Flag] = {
-      flagMap.get(key) match {
-        case Some(flag) =>
-          Seq(flag)
+    def getSpecs(key:String):Seq[OptionSpec] = {
+      specMap.get(key) match {
+        case Some(spec) =>
+          Seq(spec)
         case None =>
           if ( cfg.abbreviations ) {
-            flags.filter(_.key.startsWith(key))
+            specs.filter(_.key.startsWith(key))
           } else {
             Nil
           }
@@ -215,11 +215,11 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     }
 
     // returns success
-    def forFlag(key:String)(fn:Flag => Unit) = {
+    def forSpec(key:String)(fn:OptionSpec => Unit) = {
       finishKey
-      getFlags(key) match {
-        case Seq(flag) =>
-          fn(flag)
+      getSpecs(key) match {
+        case Seq(spec) =>
+          fn(spec)
           true
         case Nil =>
           errors :+= UnknownKey(cfg.optionPrefix + key)
@@ -230,15 +230,15 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       }
     }
 
-    def forNoFlag(noKey:String) = {
+    def forNoSpec(noKey:String) = {
       finishKey
       noKey match {
         case NoPrefixRE(key) if cfg.booleansNegatedByNoPrefix =>
-          getFlags(key).filter(_.argType == ArgType.BOOLEAN) match {
+          getSpecs(key).filter(_.argType == ArgType.BOOLEAN) match {
             case Nil =>
               false
-            case Seq(flag) =>
-              addValue(flag,false)
+            case Seq(spec) =>
+              addValue(spec,false)
               true
             case all =>
               errors :+= AmbiguousKey(cfg.optionPrefix + noKey,all)
@@ -249,46 +249,46 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       }
     }
 
-    def consumeKeyAndValue(flag:Flag,value:String) {
+    def consumeKeyAndValue(spec:OptionSpec,value:String) {
       finishKey
 
-      flag.argType match {
+      spec.argType match {
         case ArgType.BOOLEAN =>
-          errors :+= UnexpectedValue(flag,value)
+          errors :+= UnexpectedValue(spec,value)
         case ArgType.COUNTER =>
-          errors :+= UnexpectedValue(flag,value)
+          errors :+= UnexpectedValue(spec,value)
         case _ =>
-          addStringValue(flag,value)
+          addStringValue(spec,value)
       }
     }
 
-    def consumeKey(flag:Flag) {
+    def consumeKey(spec:OptionSpec) {
       finishKey
 
-      flag.argType match {
+      spec.argType match {
         case ArgType.BOOLEAN =>
-          log.debug(s"Got boolean key ${flag.key}, adding true value")
-          addValue(flag,true)
+          log.debug(s"Got boolean key ${spec.key}, adding true value")
+          addValue(spec,true)
         case ArgType.COUNTER =>
-          log.debug(s"Got counter key ${flag.key}, incrementing value")
-          incrementValue(flag)
+          log.debug(s"Got counter key ${spec.key}, incrementing value")
+          incrementValue(spec)
         case _ =>
           if ( ! cfg.useLongKeys && cfg.mustCollapseValues ) {
-            errors :+= MissingValue(flag)
+            errors :+= MissingValue(spec)
           } else {
-            log.debug(s"Got key ${flag.key}, waiting for value(s)")
-            currentFlag = Some(flag)
+            log.debug(s"Got key ${spec.key}, waiting for value(s)")
+            currentSpec = Some(spec)
           }
       }
     }
 
     def finishKey {
-      // Raise an error if the last flag never got its value(s)
-      currentFlag map { cf =>
+      // Raise an error if the last spec never got its value(s)
+      currentSpec map { cf =>
         errors :+= MissingValue(cf)
       }
-      // Mark that we're able to start a new flag now
-      currentFlag = None
+      // Mark that we're able to start a new spec now
+      currentSpec = None
     }
 
     var done = false
@@ -303,7 +303,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
 
     while ( ! done ) {
       log.debug("PARSE: " + remainingArgs.mkString(" "))
-      currentFlag match {
+      currentSpec match {
         case None => remainingArgs match {
 
           case Nil =>
@@ -320,19 +320,19 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
                 bareHead.split("=",2) match {
                   // arg is separable into key and value with '='
                   case Array(key,value) =>
-                    forFlag(key)(consumeKeyAndValue(_,value))
+                    forSpec(key)(consumeKeyAndValue(_,value))
                   // arg contains no '=' and it's required
                   case Array(key) if cfg.mustCollapseValues =>
-                    forFlag(key) { flag =>
-                      errors :+= MissingValue(flag)
+                    forSpec(key) { spec =>
+                      errors :+= MissingValue(spec)
                     }
                   // arg contains no '=' but we didn't need it (it was optional)
                   case Array(key) =>
-                    forNoFlag(bareHead) || forFlag(key)(consumeKey)
+                    forNoSpec(bareHead) || forSpec(key)(consumeKey)
                 }
               } else {
                 // long key must appear in an arg by itself (no '=', no value)
-                forNoFlag(bareHead) || forFlag(bareHead)(consumeKey)
+                forNoSpec(bareHead) || forSpec(bareHead)(consumeKey)
               }
             } else { // use short keys
               // This var will keep track of the rest of the arg we still have to parse
@@ -344,18 +344,18 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
                 var k = rest.substring(0,1)
                 rest = rest.tail
 
-                forFlag(k) { flag =>
+                forSpec(k) { spec =>
                   // This expression basically just says that, if there's more stuff following
                   // the key and we're allow to COLLAPSE TODO the key is expecting a value or clustering is disabled, then treat the
                   // following stuff as the value for the key.  Otherwise, consume the key
                   // and wait for its value to follow.  Note that, in some cases, this will
                   // cause an error to be raised but that's exactly what should happen in
                   // those cases.
-                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( flag.requiresValue || !cfg.clustering ) ) {
-                    consumeKeyAndValue(flag,rest)
+                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( spec.requiresValue || !cfg.clustering ) ) {
+                    consumeKeyAndValue(spec,rest)
                     rest = ""
                   } else {
-                    consumeKey(flag)
+                    consumeKey(spec)
                   }
                 }
 
@@ -364,15 +364,15 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
             }
             remainingArgs = tail
 
-          case head :: tail if currentFlag.isDefined =>
+          case head :: tail if currentSpec.isDefined =>
             // TODO: handle other cases like multiple appearances set multiple values
-            addStringValue(currentFlag.get,head)
-            currentFlag = None
+            addStringValue(currentSpec.get,head)
+            currentSpec = None
             remainingArgs = tail
 
           case head :: tail if inOptionCluster =>
             // First character should be treated as a option key
-            forFlag(head.head.toString)(consumeKey)
+            forSpec(head.head.toString)(consumeKey)
 
           case head :: tail if cfg.stopAtFirstBareWord =>
             done = true
@@ -382,7 +382,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
             remainingArgs = tail
         }
 
-        case Some(flag) => remainingArgs match {
+        case Some(spec) => remainingArgs match {
           case Nil =>
             finishKey
 
@@ -390,9 +390,9 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
             finishKey
 
           case head :: tail =>
-            log.debug(s"Collecting value $head for flag $flag")
-            addStringValue(flag,head)
-            currentFlag = None
+            log.debug(s"Collecting value $head for spec $spec")
+            addStringValue(spec,head)
+            currentSpec = None
             remainingArgs = tail
         }
       }
@@ -415,13 +415,13 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     // TODO: combine this with the one in parseInternal for one list of errors
     var errors:List[UsageError] = Nil
 
-    val constructorArgs = flags map { flag =>
-      val value = valuesMap.get(flag)
+    val constructorArgs = specs map { spec =>
+      val value = valuesMap.get(spec)
 
-      flag.argType match {
+      spec.argType match {
         case ArgType.BOOLEAN => value.getOrElse(false)
         case ArgType.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
-        case _ => flag.cardinality match {
+        case _ => spec.cardinality match {
           case Cardinality.MULTIPLE => value.getOrElse(Nil)
           case Cardinality.OPTIONAL => value.getOrElse(None)
           case Cardinality.REQUIRED =>
@@ -429,7 +429,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
               case Some(v) =>
                 v
               case None =>
-                errors :+= MissingRequiredKey(flag)
+                errors :+= MissingRequiredKey(spec)
             }
         }
       }
@@ -437,7 +437,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
 
     log.debug { pw:PrintWriter =>
       pw.println("PARSE RESULTS:")
-      ( flags zip constructorArgs) foreach { case (f,ca) =>
+      ( specs zip constructorArgs) foreach { case (f,ca) =>
         pw.println(s"  $f => $ca")
       }
     }
@@ -453,7 +453,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
   }
 
   def usage(totalWidth:Int = 120,indent:Int = 2,gap:Int = 6) = {
-    val column1 = flags map { f =>
+    val column1 = specs map { f =>
       Seq(
         Seq(cfg.optionPrefix,f.key),
         f.requiresValue match {
@@ -480,7 +480,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     val c2start = indent + c1width + gap
     val c2width = totalWidth - c2start
 
-    val column2 = flags map { f =>
+    val column2 = specs map { f =>
       val extra = f.cardinality match {
         case Cardinality.MULTIPLE => Some(" (repeatable)")
         case Cardinality.REQUIRED => Some(" (required)")

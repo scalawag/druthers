@@ -14,8 +14,8 @@ class SeqIntTest extends OptionsParserTest {
 
   test("short - collapse prohibited, fail") {
     fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesProhibited) {
-      case Seq(MissingValue(flag),UnknownKey("-7")) =>
-        flag.key should be ("a")
+      case Seq(MissingValue(spec),UnknownKey("-7")) =>
+        spec.key should be ("a")
     }
   }
 
@@ -25,8 +25,8 @@ class SeqIntTest extends OptionsParserTest {
 
   test("short - collapse required, fail") {
     fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesRequired) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("a")
+      case Seq(MissingValue(spec)) =>
+        spec.key should be ("a")
     }
   }
 
@@ -47,13 +47,13 @@ class SeqIntTest extends OptionsParserTest {
 
   test("short - invalid delimited") {
     fail[Opts]("-a 42 -a x",SHORT) {
-      case Seq(InvalidValue(flag,"x",_)) => flag.key should be ("a")
+      case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("a")
     }
   }
 
   test("short - invalid non-delimited") {
     fail[Opts]("-a 42 -ax",SHORT) {
-      case Seq(InvalidValue(flag,"x",_)) => flag.key should be ("a")
+      case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("a")
     }
   }
 
@@ -76,8 +76,8 @@ class SeqIntTest extends OptionsParserTest {
 
   test("long - collapse required, fail") {
     fail[Opts]("--aopt=42 --aopt 7",LONG.withCollapsedValuesRequired) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("aopt")
+      case Seq(MissingValue(spec)) =>
+        spec.key should be ("aopt")
     }
   }
 
@@ -94,15 +94,15 @@ class SeqIntTest extends OptionsParserTest {
 
   test("long - specify illegal value") {
     fail[Opts]("--aopt=notanum",LONG) {
-      case Seq(InvalidValue(flag,"notanum",_)) =>
-        flag.key should be ("aopt")
+      case Seq(InvalidValue(spec,"notanum",_)) =>
+        spec.key should be ("aopt")
     }
   }
 
   test("long - missing values") {
     fail[Opts]("--aopt",LONG) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("aopt")
+      case Seq(MissingValue(spec)) =>
+        spec.key should be ("aopt")
     }
   }
 
@@ -128,8 +128,8 @@ class SeqIntTest extends OptionsParserTest {
 
   test("long - values separated by comma fails without feature enabled") {
     fail[Opts]("--aopt 42,7,404",LONG) {
-      case Seq(InvalidValue(flag,"42,7,404",_)) =>
-        flag.key should be ("aopt")
+      case Seq(InvalidValue(spec,"42,7,404",_)) =>
+        spec.key should be ("aopt")
     }
   }
 }

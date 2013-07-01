@@ -37,8 +37,8 @@ class CounterTest extends OptionsParserTest {
 
   test("short - clustering fails with clustering disabled") {
     fail[Opts]("-aaa",SHORT) {
-      case Seq(UnexpectedValue(flag,"aa")) =>
-        flag.key should be ("a")
+      case Seq(UnexpectedValue(spec,"aa")) =>
+        spec.key should be ("a")
     }
   }
 
@@ -63,15 +63,15 @@ class CounterTest extends OptionsParserTest {
 
   test("long - specify illegal value") {
     fail[Opts]("--aopt=true",LONG) {
-      case Seq(UnexpectedValue(flag,"true")) =>
-        flag.key should be ("aopt")
+      case Seq(UnexpectedValue(spec,"true")) =>
+        spec.key should be ("aopt")
     }
   }
 
   test("long - specify illegal value (empty)") {
     fail[Opts]("--aopt=",LONG) {
-      case Seq(UnexpectedValue(flag,"")) =>
-        flag.key should be ("aopt")
+      case Seq(UnexpectedValue(spec,"")) =>
+        spec.key should be ("aopt")
     }
   }
 }

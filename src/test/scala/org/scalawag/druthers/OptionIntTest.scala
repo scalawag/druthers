@@ -18,8 +18,8 @@ class OptionIntTest extends OptionsParserTest {
 
   test("short - collapse prohibited, fail") {
     fail[Opts]("-a 42 -b7",SHORT.withCollapsedValuesProhibited) {
-      case Seq(MissingValue(flag),UnknownKey("-7")) =>
-        flag.key should be ("b")
+      case Seq(MissingValue(spec),UnknownKey("-7")) =>
+        spec.key should be ("b")
     }
   }
 
@@ -32,8 +32,8 @@ class OptionIntTest extends OptionsParserTest {
 
   test("short - collapse required, fail") {
     fail[Opts]("-a 42 -b7",SHORT.withCollapsedValuesRequired) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("a")
+      case Seq(MissingValue(spec)) =>
+        spec.key should be ("a")
     }
   }
 
@@ -57,13 +57,13 @@ class OptionIntTest extends OptionsParserTest {
 
   test("short - invalid delimited") {
     fail[Opts]("-a 42 -b x",SHORT) {
-      case Seq(InvalidValue(flag,"x",_)) => flag.key should be ("b")
+      case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("b")
     }
   }
 
   test("short - invalid non-delimited") {
     fail[Opts]("-a 42 -bx",SHORT) {
-      case Seq(InvalidValue(flag,"x",_)) => flag.key should be ("b")
+      case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("b")
     }
   }
 
@@ -86,8 +86,8 @@ class OptionIntTest extends OptionsParserTest {
 
   test("long - collapse required, fail") {
     fail[Opts]("--aopt=42 --bopt 7",LONG.withCollapsedValuesRequired) {
-      case Seq(MissingValue(flag)) =>
-        flag.key should be ("bopt")
+      case Seq(MissingValue(spec)) =>
+        spec.key should be ("bopt")
     }
   }
 
@@ -104,8 +104,8 @@ class OptionIntTest extends OptionsParserTest {
 
   test("long - specify illegal value") {
     fail[Opts]("--aopt=notanum",LONG) {
-      case Seq(InvalidValue(flag,"notanum",_)) =>
-        flag.key should be ("aopt")
+      case Seq(InvalidValue(spec,"notanum",_)) =>
+        spec.key should be ("aopt")
     }
   }
 }

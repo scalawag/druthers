@@ -23,8 +23,8 @@ import UsageTest._
 class UsageTest extends FunSuite with ShouldMatchers {
   test("read usage from annotations") {
     val parser = new OptionsParser[Opts](ParserConfiguration.withShortKeys)
-    parser.flags(0).usage should be (Some("here's my documentation"))
-    parser.flags(1).usage should be (None)
+    parser.specs(0).usage should be (Some("here's my documentation"))
+    parser.specs(1).usage should be (None)
   }
 
   test("print long usage") {
