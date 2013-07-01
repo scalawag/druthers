@@ -28,36 +28,36 @@ import InvalidClassTest._
 class InvalidClassTest extends FunSuite with ShouldMatchers {
 
   test("accept everyting good") {
-    new Parser[EverythingGood]
+    new OptionsParser[EverythingGood]
   }
 
   test("reject Seq[Counter] field") {
     intercept[IllegalArgumentException] {
-      new Parser[BadSeqCounter]
+      new OptionsParser[BadSeqCounter]
     }
   }
 
   test("reject Option[Counter] field") {
     intercept[IllegalArgumentException] {
-      new Parser[BadOptionCounter]
+      new OptionsParser[BadOptionCounter]
     }
   }
 
   test("reject Seq[Boolean] field") {
     intercept[IllegalArgumentException] {
-      new Parser[BadSeqBoolean]
+      new OptionsParser[BadSeqBoolean]
     }
   }
 
   test("reject Option[Boolean] field") {
     intercept[IllegalArgumentException] {
-      new Parser[BadOptionBoolean]
+      new OptionsParser[BadOptionBoolean]
     }
   }
 
   test("reject BigInt field") {
     intercept[IllegalArgumentException] {
-      new Parser[BadBigInt]
+      new OptionsParser[BadBigInt]
     }
   }
 }

@@ -7,7 +7,7 @@ object FloatTest {
 
 import FloatTest._
 
-class FloatTest extends ParserTest {
+class FloatTest extends OptionsParserTest {
 
   test("short - present") {
     succeed[Opts]("-a 4.2 -b7.1",SHORT) { case(opts,remains) =>

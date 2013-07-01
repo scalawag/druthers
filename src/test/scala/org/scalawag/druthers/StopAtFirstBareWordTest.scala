@@ -6,7 +6,7 @@ object StopAtFirstBareWordTest {
 
 import StopAtFirstBareWordTest._
 
-class StopAtFirstBareWordTest extends ParserTest {
+class StopAtFirstBareWordTest extends OptionsParserTest {
   test("don't stop") {
     succeed[Opts]("-a 4 bare1 -a 8 bare2",Opts(Seq(4,8)),"bare1 bare2",SHORT)
   }

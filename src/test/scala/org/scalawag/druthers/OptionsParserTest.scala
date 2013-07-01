@@ -4,14 +4,14 @@ import scala.reflect.runtime.universe.TypeTag
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FunSuite
 
-abstract class ParserTest extends FunSuite with ShouldMatchers {
+abstract class OptionsParserTest extends FunSuite with ShouldMatchers {
   val SHORT = ParserConfiguration.withShortKeys
   val LONG = ParserConfiguration.withLongKeys
 
   def succeed[T:TypeTag](args:String,opts:T,remains:String,config:ParserConfiguration):Unit =
-    succeed(args,opts,remains,new Parser[T](config))
+    succeed(args,opts,remains,new OptionsParser[T](config))
 
-  def succeed[T:TypeTag](args:String,opts:T,remains:String,parser:Parser[T]) {
+  def succeed[T:TypeTag](args:String,opts:T,remains:String,parser:OptionsParser[T]) {
     val (o,r) = parser.parse(split(args))
 
     o should be (opts)
@@ -19,13 +19,13 @@ abstract class ParserTest extends FunSuite with ShouldMatchers {
   }
 
   def succeed[T:TypeTag](args:String,config:ParserConfiguration)(fn:PartialFunction[(T,List[String]),Unit]) {
-    val parser = new Parser[T](config)
+    val parser = new OptionsParser[T](config)
     val (o,r) = parser.parse(split(args))
     fn((o,r))
   }
 
   def fail[T:TypeTag](args:String,config:ParserConfiguration)(fn:PartialFunction[Seq[UsageError],Unit]) {
-    fn(intercept[UsageException]((new Parser[T](config)).parse(split(args))).errors)
+    fn(intercept[UsageException]((new OptionsParser[T](config)).parse(split(args))).errors)
   }
 
   protected def split(s:String):List[String] =

@@ -13,12 +13,12 @@ class QuietModeTest extends FunSuite with ShouldMatchers {
 
   test("loud") {
     intercept[UsageException] {
-      new Parser[Opts](config).unapply(Nil)
+      new OptionsParser[Opts](config).unapply(Nil)
     }
   }
 
   test("quiet") {
-    new Parser[Opts](config.withQuietMode).unapply(Nil) should be (None)
+    new OptionsParser[Opts](config.withQuietMode).unapply(Nil) should be (None)
   }
 }
 

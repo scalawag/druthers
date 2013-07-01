@@ -17,7 +17,7 @@ object HugeTest {
 
 import HugeTest._
 
-class HugeTest extends ParserTest {
+class HugeTest extends OptionsParserTest {
   test("100 fields") {
     succeed[Huge]("--a42 7 --a87 42",LONG) { case (huge,extra) =>
       huge.a00 should be (None)

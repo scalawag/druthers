@@ -15,7 +15,7 @@ object BooleanTest {
 
 import BooleanTest._
 
-class BooleanTest extends ParserTest {
+class BooleanTest extends OptionsParserTest {
 
   test("short - present") {
     succeed[Opts]("-a",SHORT) { case(opts,remains) =>

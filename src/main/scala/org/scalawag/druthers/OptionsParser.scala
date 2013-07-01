@@ -8,7 +8,7 @@ import scala.util.Success
 import java.io.PrintWriter
 import scala.annotation.tailrec
 
-object Parser {
+object OptionsParser {
   case class Flag(key:String,
                   name:String,
                   argType:ArgType.Value,
@@ -51,8 +51,8 @@ object Parser {
   private val WordRE = "( *)([^ ]+)(.*)".r
 }
 
-class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
-  import Parser._
+class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
+  import OptionsParser._
 
   // Identifies the flags implied by the container class.
 
@@ -122,7 +122,7 @@ class Parser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.
   private lazy val constructor = {
 
     if ( typeOf[C] <:< NOTHING_TYPE )
-      throw new IllegalArgumentException(s"target class not specified, add a type parameter to Parser")
+      throw new IllegalArgumentException(s"target class not specified, add a type parameter to OptionsParser")
 
     val constructors = typeOf[C].declarations.collect {
       case m:MethodSymbol if m.isConstructor => m

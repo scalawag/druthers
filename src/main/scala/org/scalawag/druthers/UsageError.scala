@@ -1,6 +1,6 @@
 package org.scalawag.druthers
 
-import Parser.Flag
+import OptionsParser.Flag
 import CommandParser.Argument
 
 sealed trait UsageError

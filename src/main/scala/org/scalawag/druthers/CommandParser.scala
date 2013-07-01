@@ -6,7 +6,7 @@ import scala.util.{Try, Success, Failure}
 import java.io.PrintWriter
 
 object CommandParser {
-  case class Options[C](name:String,parser:Parser[C])
+  case class Options[C](name:String,parser:OptionsParser[C])
 
   case class Argument(name:String,
                       argType:ArgType.Value,
@@ -81,9 +81,9 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
 
       if ( argType == ArgType.OPTIONS ) {
         if ( param.typeSignature =:= typeOf[P1] )
-          Options(name,new Parser[P1](cfg))
+          Options(name,new OptionsParser[P1](cfg))
         else
-          throw new IllegalArgumentException(s"couldn't find a Parser for parameter type for argument '$name': ${param.typeSignature}")
+          throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${param.typeSignature}")
       } else {
         Argument(name,argType,cardinality,usage)
       }

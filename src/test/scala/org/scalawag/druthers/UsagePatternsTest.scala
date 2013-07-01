@@ -38,7 +38,7 @@ object UsagePatternsTest {
 
 import UsagePatternsTest._
 
-class UsagePatternsTest extends ParserTest {
+class UsagePatternsTest extends OptionsParserTest {
 
   // This one is more efficient in that the global opts are only parsed once.
   // This comes at the expense of depth (nested cases) and arguably beauty (but
@@ -96,9 +96,9 @@ class UsagePatternsTest extends ParserTest {
 
     val config = SHORT.withStopAtFirstBareWord
 
-    val gparse = new Parser[GlobalOptions](config)
-    val cparse = new Parser[CreateOptions](config)
-    val dparse = new Parser[DeleteOptions](config)
+    val gparse = new OptionsParser[GlobalOptions](config)
+    val cparse = new OptionsParser[CreateOptions](config)
+    val dparse = new OptionsParser[DeleteOptions](config)
 
     def parse(cmd:String):Any
 
@@ -123,8 +123,8 @@ class UsagePatternsTest extends ParserTest {
 
     val config = SHORT.withQuietMode
 
-    val cparse = new Parser[CreateOptions](config)
-    val dparse = new Parser[DeleteOptions](config)
+    val cparse = new OptionsParser[CreateOptions](config)
+    val dparse = new OptionsParser[DeleteOptions](config)
 
     def parse(cmd:String) = split(cmd) match {
       case cparse(copts,"create" :: Nil) =>
@@ -139,13 +139,13 @@ class UsagePatternsTest extends ParserTest {
     parse("delete -f") should be (DeleteCommand(None,true))
   }
 
-  // Finally, you can use the Parser.parse() method directly if that fits your
+  // Finally, you can use the OptionsParser.parse() method directly if that fits your
   // use case better.
 
   test("direct") {
     import Hierarchy._
 
-    val parser = new Parser[CreateOptions]
+    val parser = new OptionsParser[CreateOptions]
 
     val args = split("-r home create -n name another")
 

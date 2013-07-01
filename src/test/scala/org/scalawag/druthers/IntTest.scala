@@ -7,7 +7,7 @@ object IntTest {
 
 import IntTest._
 
-class IntTest extends ParserTest {
+class IntTest extends OptionsParserTest {
 
   test("short - present") {
     succeed[Opts]("-a 42 -b7",SHORT) { case(opts,remains) =>

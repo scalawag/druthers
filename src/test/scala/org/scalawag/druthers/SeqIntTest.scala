@@ -6,7 +6,7 @@ object SeqIntTest {
 
 import SeqIntTest._
 
-class SeqIntTest extends ParserTest {
+class SeqIntTest extends OptionsParserTest {
 
   test("short - present") {
     succeed[Opts]("-a42 -a 7 bare",Opts(Seq(42,7)),"bare",SHORT)
