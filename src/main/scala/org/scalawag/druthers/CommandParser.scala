@@ -1,5 +1,6 @@
 package org.scalawag.druthers
 
+import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 import org.scalawag.timber.api.style.slf4j
 import scala.util.{Try, Success, Failure}
@@ -24,12 +25,12 @@ object CommandParser {
                           argType:ArgumentSpec.Type.Value,
                           cardinality:Cardinality.Value,
                           usage:Option[String])
-
-
 }
 
-class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
+class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
   import CommandParser._
+
+  def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = None
 
   val arguments = {
 
@@ -56,10 +57,9 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
           Type.OPTIONS
 
       if ( valueType == Type.OPTIONS ) {
-        if ( typeSignature =:= typeOf[P1] )
-          Options(name,new OptionsParser[P1](cfg))
-        else
+        createParser(typeSignature,cfg).map(Options(name,_)) getOrElse {
           throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${typeSignature}")
+        }
       } else {
         ArgumentSpec(name,valueType,cardinality,usage)
       }
@@ -195,6 +195,39 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
     } catch {
       case ex:UsageException if cfg.quietMode => None
     }
+}
+
+class CommandParser1[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+  override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
+    if ( tpe =:= typeOf[P1] )
+      Some(new OptionsParser[P1](cfg))
+    else
+      None
+  }
+}
+
+class CommandParser2[C:TypeTag,P1:TypeTag,P2:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+  override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
+    if ( tpe =:= typeOf[P1] )
+      Some(new OptionsParser[P1](cfg))
+    else if ( tpe =:= typeOf[P2] )
+      Some(new OptionsParser[P2](cfg))
+    else
+      None
+  }
+}
+
+class CommandParser3[C:TypeTag,P1:TypeTag,P2:TypeTag,P3:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+  override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
+    if ( tpe =:= typeOf[P1] )
+      Some(new OptionsParser[P1](cfg))
+    else if ( tpe =:= typeOf[P2] )
+      Some(new OptionsParser[P2](cfg))
+    else if ( tpe =:= typeOf[P3] )
+      Some(new OptionsParser[P3](cfg))
+    else
+      None
+  }
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
