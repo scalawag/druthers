@@ -7,6 +7,7 @@ import scala.util.Failure
 import scala.util.Success
 import java.io.PrintWriter
 import scala.annotation.tailrec
+import org.scalawag.druthers.Parser.Cardinality
 
 object OptionsParser {
   case class OptionSpec(key:String,
@@ -19,12 +20,6 @@ object OptionsParser {
       case ArgType.COUNTER => false
       case _ => true
     }
-  }
-
-  object Cardinality extends Enumeration {
-    val OPTIONAL = Value
-    val REQUIRED = Value
-    val MULTIPLE = Value
   }
 
   object ArgType extends Enumeration {
@@ -46,12 +41,10 @@ object OptionsParser {
   private val USAGE_TYPE = typeOf[Usage]
   private val VALUE_TERM = newTermName("value")
 
-  private val NOTHING_TYPE = typeOf[Nothing]
-
   private val WordRE = "( *)([^ ]+)(.*)".r
 }
 
-class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
+class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
   import OptionsParser._
 
   // Identifies the specs implied by the container class.
@@ -117,23 +110,6 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     }
 
     (specs,specMap)
-  }
-
-  private lazy val constructor = {
-
-    if ( typeOf[C] <:< NOTHING_TYPE )
-      throw new IllegalArgumentException(s"target class not specified, add a type parameter to OptionsParser")
-
-    val constructors = typeOf[C].declarations.collect {
-      case m:MethodSymbol if m.isConstructor => m
-    }.toSeq
-
-    constructors match {
-      case Seq(only) => only
-      case seq =>
-        throw new IllegalArgumentException(s"target class must have exactly one constructor, yours (${typeOf[C].typeSymbol.name}) has ${seq.length}")
-    }
-
   }
 
   def parseInternal(args:List[String]) = {

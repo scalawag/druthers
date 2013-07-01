@@ -4,6 +4,7 @@ import scala.reflect.runtime.universe._
 import org.scalawag.timber.api.style.slf4j
 import scala.util.{Try, Success, Failure}
 import java.io.PrintWriter
+import org.scalawag.druthers.Parser.Cardinality
 
 object CommandParser {
   case class Options[C](name:String,parser:OptionsParser[C])
@@ -12,12 +13,6 @@ object CommandParser {
                           argType:ArgType.Value,
                           cardinality:Cardinality.Value,
                           usage:Option[String])
-
-  object Cardinality extends Enumeration {
-    val OPTIONAL = Value
-    val REQUIRED = Value
-    val MULTIPLE = Value
-  }
 
   object ArgType extends Enumeration {
     val STRING = Value
@@ -36,11 +31,9 @@ object CommandParser {
 
   private val USAGE_TYPE = typeOf[Usage]
   private val VALUE_TERM = newTermName("value")
-
-  private val NOTHING_TYPE = typeOf[Nothing]
 }
 
-class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends slf4j.Logging {
+class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
   import CommandParser._
 
   val arguments = {
@@ -90,22 +83,6 @@ class CommandParser[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions
     }
   }
 
-  private lazy val constructor = {
-
-    if ( typeOf[C] <:< NOTHING_TYPE )
-      throw new IllegalArgumentException(s"target class not specified, add a type parameter to CommandParser")
-
-    val constructors = typeOf[C].declarations.collect {
-      case m:MethodSymbol if m.isConstructor => m
-    }.toSeq
-
-    constructors match {
-      case Seq(only) => only
-      case seq =>
-        throw new IllegalArgumentException(s"target class must have exactly one constructor, yours (${typeOf[C].typeSymbol.name}) has ${seq.length}")
-    }
-
-  }
 
   def parse(args:Array[String]):C = parse(args.toList)
 
