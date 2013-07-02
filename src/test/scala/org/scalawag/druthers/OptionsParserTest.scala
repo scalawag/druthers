@@ -1,12 +1,8 @@
 package org.scalawag.druthers
 
 import scala.reflect.runtime.universe.TypeTag
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FunSuite
 
-abstract class OptionsParserTest extends FunSuite with ShouldMatchers {
-  val SHORT = ParserConfiguration.withShortKeys
-  val LONG = ParserConfiguration.withLongKeys
+abstract class OptionsParserTest extends ParserTest {
 
   def succeed[T:TypeTag](args:String,opts:T,remains:String,config:ParserConfiguration):Unit =
     succeed(args,opts,remains,new OptionsParser[T](config))
@@ -28,11 +24,6 @@ abstract class OptionsParserTest extends FunSuite with ShouldMatchers {
     fn(intercept[UsageException]((new OptionsParser[T](config)).parse(split(args))).errors)
   }
 
-  protected def split(s:String):List[String] =
-    if ( s.isEmpty )
-      Nil
-    else
-      s.split("\\s+").toList
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
