@@ -216,7 +216,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     }
 }
 
-class CommandParser1[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+class CommandParser1[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C](cfg) with slf4j.Logging {
   override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
     if ( tpe =:= typeOf[P1] )
       Some(new OptionsParser[P1](cfg))
@@ -225,7 +225,7 @@ class CommandParser1[C:TypeTag,P1:TypeTag](cfg:ParserConfiguration = ShortOption
   }
 }
 
-class CommandParser2[C:TypeTag,P1:TypeTag,P2:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+class CommandParser2[C:TypeTag,P1:TypeTag,P2:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C](cfg) with slf4j.Logging {
   override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
     if ( tpe =:= typeOf[P1] )
       Some(new OptionsParser[P1](cfg))
@@ -236,7 +236,7 @@ class CommandParser2[C:TypeTag,P1:TypeTag,P2:TypeTag](cfg:ParserConfiguration = 
   }
 }
 
-class CommandParser3[C:TypeTag,P1:TypeTag,P2:TypeTag,P3:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C] with slf4j.Logging {
+class CommandParser3[C:TypeTag,P1:TypeTag,P2:TypeTag,P3:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends CommandParser[C](cfg) with slf4j.Logging {
   override def createParser(tpe:universe.Type,cfg:ParserConfiguration):Option[OptionsParser[_]] = {
     if ( tpe =:= typeOf[P1] )
       Some(new OptionsParser[P1](cfg))
