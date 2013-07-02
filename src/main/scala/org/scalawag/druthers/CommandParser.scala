@@ -203,11 +203,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       }
     }
 
-    val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
-    val classSymbol = typeOf[C].typeSymbol.asClass
-    val classMirror = mirror.reflectClass(classSymbol)
-    val constructorMirror = classMirror.reflectConstructor(constructor)
-    constructorMirror.apply(constructorArgs:_*).asInstanceOf[C]
+    instantiate(constructorArgs)
   }
 
   def unapply(args:Array[String]):Option[C] = unapply(args.toList)

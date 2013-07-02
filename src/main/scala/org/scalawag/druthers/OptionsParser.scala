@@ -403,11 +403,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     if ( ! errors.isEmpty )
       throw new UsageException(errors)
 
-    val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
-    val classSymbol = typeOf[C].typeSymbol.asClass
-    val classMirror = mirror.reflectClass(classSymbol)
-    val constructorMirror = classMirror.reflectConstructor(constructor)
-    (constructorMirror.apply(constructorArgs:_*).asInstanceOf[C],remains)
+    (instantiate(constructorArgs),remains)
   }
 
   def usage(totalWidth:Int = 120,indent:Int = 2,gap:Int = 6) = {

@@ -29,7 +29,7 @@ import Parser._
 
 class Parser[C:TypeTag] {
 
-  protected[this] lazy val constructor = {
+  protected[this] val constructor = {
 
     if ( typeOf[C] <:< NOTHING_TYPE )
       throw new IllegalArgumentException(s"target class not specified, add a type parameter to OptionsParser")
@@ -44,6 +44,13 @@ class Parser[C:TypeTag] {
         throw new IllegalArgumentException(s"target class must have exactly one constructor, yours (${typeOf[C].typeSymbol.name}) has ${seq.length}")
     }
 
+  }
+
+  protected[this] val constructorMirror = {
+    val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
+    val classSymbol = typeOf[C].typeSymbol.asClass
+    val classMirror = mirror.reflectClass(classSymbol)
+    classMirror.reflectConstructor(constructor)
   }
 
   protected[this] def getParams(method:MethodSymbol) =
@@ -66,4 +73,7 @@ class Parser[C:TypeTag] {
       case LiteralArgument(Constant(s:String)) => s
     }
 
+  protected[this] def instantiate(args:List[Any]) = {
+    constructorMirror.apply(args:_*).asInstanceOf[C]
+  }
 }
