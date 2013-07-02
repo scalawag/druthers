@@ -159,7 +159,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
 
               case Cardinality.OPTIONAL =>
                 consumeAndSate {
-                  case None => Some(value)
+                  case None => Some(Some(value))
                 }
 
               case Cardinality.REQUIRED =>
