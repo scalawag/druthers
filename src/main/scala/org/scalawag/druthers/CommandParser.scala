@@ -7,6 +7,7 @@ import scala.util.{Try, Success, Failure}
 import java.io.PrintWriter
 import org.scalawag.druthers.Parser._
 import org.scalawag.druthers.CommandParser.ArgumentSpec.Type
+import scala.annotation.tailrec
 
 object CommandParser {
   case class Options[C](name:String,parser:OptionsParser[C])
@@ -34,38 +35,60 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
 
   val arguments = {
 
+    @tailrec
+    def process(ins:List[Symbol],seenOptions:Boolean = false,outs:List[Any] = Nil):List[Any] =  ins match {
+
+      case Nil => outs
+
+      case head :: tail =>
+        val name = head.name.toString
+        val typeSignature = head.typeSignatureIn(typeOf[C])
+
+        val usage = getUsage(head)
+
+        val (cardinality,valueTypeSignature) = getCardinalityAndValueType(typeSignature)
+
+        val valueType =
+          if ( valueTypeSignature =:= STRING_TYPE )
+            Type.STRING
+          else if ( valueTypeSignature =:= INTEGER_TYPE )
+            Type.INTEGER
+          else if ( valueTypeSignature =:= FLOAT_TYPE )
+            Type.FLOAT
+          else if ( valueTypeSignature =:= BOOLEAN_TYPE )
+            Type.BOOLEAN
+          else
+            Type.OPTIONS
+
+        val out =
+          if ( valueType == Type.OPTIONS ) {
+            val effectiveConfig =
+              if ( seenOptions )
+                cfg match {
+                  case l:LongOptions => l.withStopAtFirstBareWord
+                  case s:ShortOptions => s.withStopAtFirstBareWord
+                }
+              else
+                cfg
+
+            createParser(typeSignature,effectiveConfig).map(Options(name,_)) getOrElse {
+              throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${typeSignature}")
+            }
+          } else {
+            ArgumentSpec(name,valueType,cardinality,usage)
+          }
+
+        process(tail,seenOptions || valueType == Type.OPTIONS,out :: outs)
+    }
+
+    // The process function works backwards so that it can detect the last Options argument and treat it
+    // specially (by allowing it to keep stopAtFirstBareWord off).  Because of that, we need to reverse the
+    // parameters before we pass them in to be processed.
+
     val params = getParams(constructor)
 
-    params map { param =>
-      val name = param.name.toString
-      val typeSignature = param.typeSignatureIn(typeOf[C])
-
-      val usage = getUsage(param)
-
-      val (cardinality,valueTypeSignature) = getCardinalityAndValueType(typeSignature)
-
-      val valueType =
-        if ( valueTypeSignature =:= STRING_TYPE )
-          Type.STRING
-        else if ( valueTypeSignature =:= INTEGER_TYPE )
-          Type.INTEGER
-        else if ( valueTypeSignature =:= FLOAT_TYPE )
-          Type.FLOAT
-        else if ( valueTypeSignature =:= BOOLEAN_TYPE )
-          Type.BOOLEAN
-        else
-          Type.OPTIONS
-
-      if ( valueType == Type.OPTIONS ) {
-        createParser(typeSignature,cfg).map(Options(name,_)) getOrElse {
-          throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${typeSignature}")
-        }
-      } else {
-        ArgumentSpec(name,valueType,cardinality,usage)
-      }
-    }
+    process(params.reverse)
   }
-
 
   def parse(args:Array[String]):C = parse(args.toList)
 
