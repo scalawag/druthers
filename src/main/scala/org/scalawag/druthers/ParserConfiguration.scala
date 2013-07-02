@@ -65,7 +65,7 @@ case class LongOptions(override val stopAtFirstBareWord:Boolean = false,
 
   def withCollapsedValuesRequired = this.copy(collapsedValues = Some(true))
   def withCollapsedValuesProhibited = this.copy(collapsedValues = Some(false))
-  def withStopAtFirstBareWord:LongOptions = this.copy(stopAtFirstBareWord = true)
+  def withStopAtFirstBareWord = this.copy(stopAtFirstBareWord = true)
   def withQuietMode = this.copy(quietMode = true)
   def withValueDelimiter(delimiter:String) = this.copy(valueDelimiter = Some(delimiter))
 }
