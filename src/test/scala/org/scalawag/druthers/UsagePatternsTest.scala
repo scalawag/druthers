@@ -13,11 +13,11 @@ object UsagePatternsTest {
 
   object Hierarchy {
     class GlobalOptions(val root:Option[String])
-    class CreateOptions(override val root:Option[String],val name:String) extends GlobalOptions(root)
+    class CreateOptions(override val root:Option[String],val template:String) extends GlobalOptions(root)
     class DeleteOptions(override val root:Option[String],val force:Boolean) extends GlobalOptions(root)
 
-    case class CreateCommand(root:Option[String],name:String)
-    case class DeleteCommand(root:Option[String],force:Boolean)
+    case class CreateTask(root:Option[String],template:String)
+    case class DeleteTask(root:Option[String],force:Boolean)
   }
 
   // These classes illustrate how to use command-specific options classes that
@@ -27,12 +27,25 @@ object UsagePatternsTest {
   // options freely, use the Hierarchy style above.
 
   object Independent {
-    class GlobalOptions(val root:Option[String])
-    class CreateOptions(val name:String,val reverse:Boolean)
+    class GlobalOptions(val root:Option[String],verbose:Boolean)
+    class CreateOptions(val template:String,val reverse:Boolean)
     class DeleteOptions(val force:Boolean)
 
-    case class CreateCommand(root:Option[String],name:String,reverse:Boolean)
-    case class DeleteCommand(root:Option[String],force:Boolean)
+    case class CreateTask(root:Option[String],template:String,reverse:Boolean)
+    case class DeleteTask(root:Option[String],force:Boolean)
+  }
+
+  // These classes illustrate a more advanced use of the CommandParser in addition
+  // to the OptionsParser.
+
+  object Command {
+    import Independent._
+
+    case class CreateCommand(gopts:GlobalOptions,cmd:String,copts:CreateOptions,name:String)
+    case class DeleteCommand(gopts:GlobalOptions,cmd:String,dopts:DeleteOptions,name:String)
+
+    case class CreateTask(root:Option[String],name:String,template:String,reverse:Boolean)
+    case class DeleteTask(root:Option[String],name:String,force:Boolean)
   }
 }
 
@@ -50,9 +63,9 @@ class UsagePatternsTest extends OptionsParserTest {
       def parse(cmd:String) = split(cmd) match {
         case gparse(gopts,words) => words match {
           case "create" :: cparse(copts,Nil) =>
-            CreateCommand(gopts.root,copts.name,copts.reverse)
+            CreateTask(gopts.root,copts.template,copts.reverse)
           case "delete" :: dparse(dopts,Nil) =>
-            DeleteCommand(gopts.root,dopts.force)
+            DeleteTask(gopts.root,dopts.force)
         }
       }
     } runTests
@@ -68,9 +81,9 @@ class UsagePatternsTest extends OptionsParserTest {
     new IndependentFixture {
       def parse(cmd:String) = split(cmd) match {
         case gparse(gopts,"create" :: cparse(copts,Nil)) =>
-          CreateCommand(gopts.root,copts.name,copts.reverse)
+          CreateTask(gopts.root,copts.template,copts.reverse)
         case gparse(gopts,"delete" :: dparse(dopts,Nil)) =>
-          DeleteCommand(gopts.root,dopts.force)
+          DeleteTask(gopts.root,dopts.force)
       }
     } runTests
   }
@@ -84,9 +97,9 @@ class UsagePatternsTest extends OptionsParserTest {
     new IndependentFixture {
       def parse(cmd:String) = split(cmd) match {
         case gopts gparse "create" :: ( copts cparse Nil ) =>
-          CreateCommand(gopts.root,copts.name,copts.reverse)
+          CreateTask(gopts.root,copts.template,copts.reverse)
         case gopts gparse "delete" :: ( dopts dparse Nil ) =>
-          DeleteCommand(gopts.root,dopts.force)
+          DeleteTask(gopts.root,dopts.force)
       }
     } runTests
   }
@@ -105,9 +118,9 @@ class UsagePatternsTest extends OptionsParserTest {
     def runTests {
       intercept[MatchError](parse(""))
       intercept[UsageException](parse("-r home create"))
-      parse("-r home create -n bob") should be (CreateCommand(Some("home"),"bob",false))
-      parse("-r home create -r -n bob") should be (CreateCommand(Some("home"),"bob",true))
-      parse("delete") should be (DeleteCommand(None,false))
+      parse("-r home create -t bob") should be (CreateTask(Some("home"),"bob",false))
+      parse("-r home create -r -t bob") should be (CreateTask(Some("home"),"bob",true))
+      parse("delete") should be (DeleteTask(None,false))
     }
   }
 
@@ -128,15 +141,15 @@ class UsagePatternsTest extends OptionsParserTest {
 
     def parse(cmd:String) = split(cmd) match {
       case cparse(copts,"create" :: Nil) =>
-        CreateCommand(copts.root,copts.name)
+        CreateTask(copts.root,copts.template)
       case dparse(dopts,"delete" :: Nil) =>
-        DeleteCommand(dopts.root,dopts.force)
+        DeleteTask(dopts.root,dopts.force)
     }
 
-    parse("-r home create -n bob") should be (CreateCommand(Some("home"),"bob"))
-    parse("create -n bob -r home") should be (CreateCommand(Some("home"),"bob"))
-    parse("-f delete") should be (DeleteCommand(None,true))
-    parse("delete -f") should be (DeleteCommand(None,true))
+    parse("-r home create -t bob") should be (CreateTask(Some("home"),"bob"))
+    parse("create -t bob -r home") should be (CreateTask(Some("home"),"bob"))
+    parse("-f delete") should be (DeleteTask(None,true))
+    parse("delete -f") should be (DeleteTask(None,true))
   }
 
   // Finally, you can use the OptionsParser.parse() method directly if that fits your
@@ -147,14 +160,38 @@ class UsagePatternsTest extends OptionsParserTest {
 
     val parser = new OptionsParser[CreateOptions]
 
-    val args = split("-r home create -n name another")
+    val args = split("-r home create -t name another")
 
     val (opts,remains) = parser.parse(args)
 
     opts.root should be (Some("home"))
-    opts.name should be ("name")
+    opts.template should be ("name")
     remains should be (List("create","another"))
   }
+
+  // If you have a complicated command line with multiple arguments as well as options,
+  // you can use the CommandParser to handle all of your parsing.  This can include multiple
+  // different sets of options.
+
+  test("command parsing") {
+    import Independent.{GlobalOptions, CreateOptions, DeleteOptions}
+    import Command._
+
+    val config = SHORT.withQuietMode
+    val cparse = new CommandParser2[CreateCommand,GlobalOptions,CreateOptions](config)
+    val dparse = new CommandParser2[DeleteCommand,GlobalOptions,DeleteOptions](config)
+
+    def parse(cmd:String) = split(cmd) match {
+      case cparse(CreateCommand(gopts,"create",copts,name)) =>
+        CreateTask(gopts.root,name,copts.template,copts.reverse)
+      case dparse(DeleteCommand(gopts,"delete",dopts,name)) =>
+        DeleteTask(gopts.root,name,dopts.force)
+    }
+
+    parse("-r home create -r abab -t standard") should be (CreateTask(Some("home"),"abab","standard",true))
+    parse("delete abab -f") should be (DeleteTask(None,"abab",true))
+  }
+
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
