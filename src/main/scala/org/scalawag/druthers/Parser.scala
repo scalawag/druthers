@@ -46,19 +46,43 @@ class Parser[C:TypeTag] {
 
   }
 
+  protected[this] val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
+
   protected[this] val constructorMirror = {
-    val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
     val classSymbol = typeOf[C].typeSymbol.asClass
     val classMirror = mirror.reflectClass(classSymbol)
     classMirror.reflectConstructor(constructor)
   }
 
-  protected[this] def getParams(method:MethodSymbol) =
+  protected[this] def getParams =
     constructor.paramss match {
       case Seq(head) => head
       case _ =>
         throw new IllegalArgumentException("target class constructor takes no arguments, making it not a very useful option container")
     }
+
+  protected[this] def getParameterDefaults() = {
+    val cls = typeOf[C].typeSymbol.asClass
+    cls.companionSymbol match {
+      case NoSymbol =>
+        // No companion object means no default parameters
+        constructor.paramss.head.map( _ => None )
+
+      case mdl:Symbol =>
+        val im = mirror.reflect((mirror.reflectModule(mdl.asModule)).instance)
+        val ts = im.symbol.typeSignature
+
+        constructor.paramss.head.zipWithIndex.map { case (p,n) =>
+          val name = newTermName(s"$$lessinit$$greater$$default$$${n+1}")
+          val defarg = ts.member(name)
+          if (defarg == NoSymbol) {
+            None
+          } else {
+            Some((im reflectMethod defarg.asMethod)())
+          }
+        }
+    }
+  }
 
   protected[this] def getCardinalityAndValueType(tpe:Type) =
     if ( tpe.erasure =:= SEQUENCE_TYPE )
@@ -77,3 +101,5 @@ class Parser[C:TypeTag] {
     constructorMirror.apply(args:_*).asInstanceOf[C]
   }
 }
+
+/* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */

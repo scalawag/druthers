@@ -25,7 +25,8 @@ object OptionsParser {
                         name:String,
                         argType:OptionSpec.Type.Value,
                         cardinality:Cardinality.Value,
-                        usage:Option[String]) {
+                        usage:Option[String] = None,
+                        default:Option[Any] = None) {
     def requiresValue = argType match {
       case OptionSpec.Type.BOOLEAN => false
       case OptionSpec.Type.COUNTER => false
@@ -40,13 +41,9 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
   import OptionsParser._
   import OptionSpec.Type
 
-  // Identifies the specs implied by the container class.
+  val (specs:List[OptionSpec],specMap) = {
 
-  val (specs,specMap) = {
-
-    val params = getParams(constructor)
-
-    val specs = params map { param =>
+    val specsWithoutDefaults:List[OptionSpec] = getParams map { param =>
       val name = param.name.toString
       val typeSignature = param.typeSignatureIn(typeOf[C])
 
@@ -78,20 +75,24 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
       OptionSpec(key,name,valueType,cardinality,usage)
     }
 
-    val specMap = specs.map( f => f.key -> f ).toMap
+    val specsWithDefaults = specsWithoutDefaults.zip(getParameterDefaults) map { case (spec,default) =>
+      spec.copy(default = default)
+    }
 
-    if ( specMap.size < specs.size ) {
-      val collisions = specs.groupBy(_.key).flatMap { case (key,specs) =>
-        if ( specs.length > 1 )
-          Some(s"  $key => ${specs.map(_.name).mkString(" ")}")
+    val specMap = specsWithDefaults.map( f => f.key -> f ).toMap
+
+    if ( specMap.size < specsWithDefaults.size ) {
+      val collisions = specsWithDefaults.groupBy(_.key).flatMap { case (key,colliders) =>
+        if ( colliders.length > 1 )
+          Some(s"  $key => ${colliders.map(_.name).mkString(" ")}")
         else
           None
       }.toSeq
-      val lines = "key collisions found, use LongKeys or change your field names" +: collisions
+      val lines = "key collisions found, use long keys or change your field names" +: collisions
       throw new IllegalArgumentException(lines.mkString("","\n","\n"))
     }
 
-    (specs,specMap)
+    (specsWithDefaults,specMap)
   }
 
   def parseInternal(args:List[String]) = {
@@ -380,14 +381,11 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
         case Type.BOOLEAN => value.getOrElse(false)
         case Type.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
         case _ => spec.cardinality match {
-          case Cardinality.MULTIPLE => value.getOrElse(Nil)
-          case Cardinality.OPTIONAL => value.getOrElse(None)
+          case Cardinality.MULTIPLE => firstDefinedOf(value,spec.default).getOrElse(Nil)
+          case Cardinality.OPTIONAL => firstDefinedOf(value,spec.default).getOrElse(None)
           case Cardinality.REQUIRED =>
-            value match {
-              case Some(v) =>
-                v
-              case None =>
-                errors :+= MissingRequiredKey(spec)
+            firstDefinedOf(value,spec.default).getOrElse {
+              errors :+= MissingRequiredKey(spec)
             }
         }
       }
@@ -487,6 +485,8 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     else
       Seq(c)
   }
+
+  private def firstDefinedOf[A](items:Option[A]*) = items.flatten.headOption
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */

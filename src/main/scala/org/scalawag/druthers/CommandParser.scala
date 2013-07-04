@@ -24,6 +24,7 @@ object CommandParser {
 
   case class ArgumentSpec(name:String,
                           argType:ArgumentSpec.Type.Value,
+                          default:Option[Any] = None,
                           cardinality:Cardinality.Value,
                           usage:Option[String])
 }
@@ -75,7 +76,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
               throw new IllegalArgumentException(s"couldn't find a OptionsParser for parameter type for argument '$name': ${typeSignature}")
             }
           } else {
-            ArgumentSpec(name,valueType,cardinality,usage)
+            ArgumentSpec(name,valueType,None,cardinality,usage)
           }
 
         process(tail,seenOptions || valueType == Type.OPTIONS,out :: outs)
@@ -85,9 +86,12 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     // specially (by allowing it to keep stopAtFirstBareWord off).  Because of that, we need to reverse the
     // parameters before we pass them in to be processed.
 
-    val params = getParams(constructor)
+    val arguments = process(getParams.reverse)
 
-    process(params.reverse)
+    arguments.zip(getParameterDefaults) map {
+      case (argument:ArgumentSpec,default) => argument.copy(default = default)
+      case (options:Options[_],None) => options
+    }
   }
 
   def parse(args:Array[String]):C = parse(args.toList)
@@ -105,7 +109,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
           else
             Failure(UsageException(List(ExtraneousValues(args))))
 
-        case ( spec@ArgumentSpec(name,argType,cardinality,_) ) :: _ =>
+        case ( spec@ArgumentSpec(name,argType,defaultValue,cardinality,_) ) :: _ =>
 
           val conversion = args match {
             case head :: _ =>
@@ -171,13 +175,16 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
           } recoverWith { case thrown =>
             cardinality match {
               case Cardinality.MULTIPLE =>
-                pass(Nil)
+                pass(defaultValue.getOrElse(Nil))
               case Cardinality.OPTIONAL =>
-                pass(None)
+                pass(defaultValue.getOrElse(None))
               case Cardinality.REQUIRED =>
                 // We can't pass because this is a required argument.  We know that there's no value here
                 // because we would have sated the required spec when we saw it (above).  Ergo, just fail.
-                Failure(thrown)
+                defaultValue match {
+                  case Some(dflt) => pass(dflt)
+                  case None => Failure(thrown)
+                }
             }
           }
 

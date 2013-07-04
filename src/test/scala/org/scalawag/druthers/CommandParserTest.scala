@@ -17,6 +17,9 @@ object CommandParserTest {
   case class CommandOptions(force:Boolean,reverse:Boolean)
 
   case class FancyCommand(gopts:GlobalOptions,cmd:String,copts:CommandOptions,args:Seq[String])
+
+  case class DefaultParameters(a:String = "A",b:Int = 2,c:Float = 3f,d:Seq[String] = Seq("x","y","z"),e:Option[Int] = Some(42))
+  case class DefaultParametersWithRequired(a:String = "A",b:Int)
 }
 
 import CommandParserTest._
@@ -90,6 +93,30 @@ class CommandParserTest extends ParserTest {
 
     parser.parse(split("-r home create -f a1 a2 -r a3")) should be {
       FancyCommand(GlobalOptions(Some("home")),"create",CommandOptions(true,false),Seq("a1","a2","-r","a3"))
+    }
+  }
+
+  test("default parameters") {
+    val parser = new CommandParser[DefaultParameters]
+
+    parser.parse(Nil) should be {
+      DefaultParameters()
+    }
+  }
+
+  test("default parameters are greedy") {
+    val parser = new CommandParser[DefaultParameters]
+
+    parser.parse(split("8")) should be {
+      DefaultParameters("8")
+    }
+  }
+
+  test("default parameters are greedy but will give up parameters to meet requirements") {
+    val parser = new CommandParser[DefaultParametersWithRequired]
+
+    parser.parse(split("8")) should be {
+      DefaultParametersWithRequired(b = 8)
     }
   }
 
