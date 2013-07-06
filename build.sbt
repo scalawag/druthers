@@ -1,3 +1,6 @@
+import de.johoop.jacoco4sbt._
+import JacocoPlugin._
+
 organization := "org.scalawag.druthers"
 
 name := "druthers"
@@ -11,6 +14,8 @@ scalacOptions ++= Seq("-unchecked","-deprecation","-feature")
 // Right now, the reflection stuff is not thread-safe so we have to execute our tests in sequence.
 // See: http://docs.scala-lang.org/overviews/reflection/thread-safety.html
 parallelExecution in Test := false
+
+parallelExecution in jacoco.Config := false
 
 resolvers += "sonatype-oss-snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
 
@@ -57,5 +62,7 @@ pomExtra :=
       <url>https://github.com/justinp</url>
     </developer>
   </developers>
+
+seq(jacoco.settings : _*)
 
 // druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved
