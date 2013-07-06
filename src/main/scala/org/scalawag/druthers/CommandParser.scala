@@ -87,8 +87,9 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     // parameters before we pass them in to be processed.
 
     val arguments = process(getParams.reverse)
+    val argumentWithDefaults = arguments.zip(getParameterDefaults)
 
-    arguments.zip(getParameterDefaults) map {
+    ( argumentWithDefaults : @unchecked ) map {
       case (argument:ArgumentSpec,default) => argument.copy(default = default)
       case (options:Options[_],None) => options
     }
@@ -101,7 +102,7 @@ class CommandParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     def parseHelper(args:List[String],specs:List[Any],constructorArgs:List[Option[Any]]):Try[List[Option[Any]]] = {
       log.debug(s"PARSE: args=$args specs=$specs constructorArgs=$constructorArgs")
 
-      specs match {
+      (specs: @unchecked) match {
 
         case Nil =>
           if ( args.isEmpty )
