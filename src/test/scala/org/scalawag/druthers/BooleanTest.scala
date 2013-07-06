@@ -18,71 +18,65 @@ import BooleanTest._
 class BooleanTest extends OptionsParserTest {
 
   test("short - present") {
-    succeed[Opts]("-a",SHORT) { case(opts,remains) =>
-      opts should be (Opts(true))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("-a",SHORT) should be ((Opts(true),Nil))
   }
 
   test("short - present with trailing bare word") {
-    succeed[Opts]("-a bare",Opts(true),"bare",SHORT)
+    parseOf[Opts]("-a bare",SHORT) should be ((Opts(true),List("bare")))
   }
 
   test("short - present with trailing option") {
-    succeed[Opts]("-a -b",Opts(true,true),"",SHORT)
+    parseOf[Opts]("-a -b",SHORT) should be ((Opts(true,true),Nil))
   }
 
   test("short - absent") {
-    succeed[Opts]("",Opts(),"",SHORT)
+    parseOf[Opts]("",SHORT) should be ((Opts(),Nil))
   }
 
   test("short - cluster") {
-    succeed[Opts]("-ab",Opts(true,true),"",SHORT.withClustering)
+    parseOf[Opts]("-ab",SHORT.withClustering) should be ((Opts(true,true),Nil))
   }
 
   test("short - clustering fails with clustering disabled") {
-    fail[Opts]("-ab",SHORT) {
-      case Seq(UnexpectedValue(spec,"b")) =>
-        spec.key should be ("a")
+    fail[Opts]("-ab",SHORT) match {
+      case Seq(UnexpectedValue(spec,"b")) => spec.key should be ("a")
     }
   }
 
   test("long - present") {
-    succeed[Opts]("--aopt",Opts(true),"",LONG)
+    parseOf[Opts]("--aopt",LONG) should be ((Opts(true),Nil))
   }
 
   test("long - absent") {
-    succeed[Opts]("",Opts(),"",LONG)
+    parseOf[Opts]("",LONG) should be ((Opts(),Nil))
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=true",LONG) {
-      case Seq(UnexpectedValue(spec,"true")) =>
-        spec.key should be ("aopt")
+    fail[Opts]("--aopt=true",LONG) match {
+      case Seq(UnexpectedValue(spec,"true")) => spec.key should be ("aopt")
     }
   }
 
   test("long - specify illegal value (empty)") {
-    fail[Opts]("--aopt=",LONG) {
-      case Seq(UnexpectedValue(spec,"")) =>
-        spec.key should be ("aopt")
+    fail[Opts]("--aopt=",LONG) match {
+      case Seq(UnexpectedValue(spec,"")) => spec.key should be ("aopt")
     }
   }
 
   test("long - no to negate") {
-    succeed[Opts]("--no-aopt --bopt --no-copt",Opts(false,true,false),"",LONG.withBooleansNegatedByNoPrefix)
+    parseOf[Opts]("--no-aopt --bopt --no-copt",LONG.withBooleansNegatedByNoPrefix) should be ((Opts(false,true,false),Nil))
   }
 
   test("long - unambiguous abbreviation") {
-    succeed[Opts]("--a",Opts(true),"",LONG.withAbbreviations)
+    parseOf[Opts]("--a",LONG.withAbbreviations) should be ((Opts(true),Nil))
   }
 
   test("long - unambiguous abbreviation, subset of another key") {
-    succeed[AmbiguousOpts]("--aa",AmbiguousOpts(true,false),"",LONG.withAbbreviations)
+    parseOf[AmbiguousOpts]("--aa",LONG.withAbbreviations) should be ((AmbiguousOpts(true,false),Nil))
   }
 
   test("long - ambiguous abbreviation") {
-    fail[AmbiguousOpts]("--a=",LONG.withAbbreviations) {
+    fail[AmbiguousOpts]("--a=",LONG.withAbbreviations) match {
       case Seq(AmbiguousKey("--a",Seq(spec1,spec2))) =>
         spec1.key should be ("aa")
         spec2.key should be ("aaa")
@@ -90,23 +84,23 @@ class BooleanTest extends OptionsParserTest {
   }
 
   test("long - negative unambiguous abbreviation") {
-    succeed[Opts]("--no-a --b",Opts(false,true),"",LONG.withAbbreviations.withBooleansNegatedByNoPrefix)
+    parseOf[Opts]("--no-a --b",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) should be ((Opts(false,true),Nil))
   }
 
   test("long - negative ambiguous abbreviation") {
-    fail[AmbiguousOpts]("--no-a",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) {
+    fail[AmbiguousOpts]("--no-a",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) match {
       case Seq(AmbiguousKey("--no-a",Seq(spec1,spec2))) =>
         spec1.key should be ("aa")
         spec2.key should be ("aaa")
     }
   }
 
-  ignore("long - positive keys take precedence") {
-    succeed[AmbiguousNoOpts]("--no-a",AmbiguousNoOpts(false,true),"",LONG.withBooleansNegatedByNoPrefix)
+  test("long - positive keys take precedence") {
+    parseOf[AmbiguousNoOpts]("--no-a",LONG.withBooleansNegatedByNoPrefix) should be ((AmbiguousNoOpts(false,true),Nil))
   }
 
   test("long - 'no' prefix doesn't conflict for non-boolean fields") {
-    succeed[UnambiguousNoOpts]("--no-a",UnambiguousNoOpts(None,false),"",LONG.withAbbreviations.withBooleansNegatedByNoPrefix)
+    parseOf[UnambiguousNoOpts]("--no-a",LONG.withAbbreviations.withBooleansNegatedByNoPrefix) should be ((UnambiguousNoOpts(None,false),Nil))
   }
 }
 

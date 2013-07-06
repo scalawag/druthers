@@ -19,7 +19,7 @@ import HugeTest._
 
 class HugeTest extends OptionsParserTest {
   test("100 fields") {
-    succeed[Huge]("--a42 7 --a87 42",LONG) { case (huge,extra) =>
+    parseOf[Huge]("--a42 7 --a87 42",LONG) match { case (huge,extra) =>
       huge.a00 should be (None)
       huge.a42 should be (Some(7))
       huge.a87 should be (Some(42))

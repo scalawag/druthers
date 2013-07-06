@@ -8,11 +8,11 @@ import StopAtFirstBareWordTest._
 
 class StopAtFirstBareWordTest extends OptionsParserTest {
   test("don't stop") {
-    succeed[Opts]("-a 4 bare1 -a 8 bare2",Opts(Seq(4,8)),"bare1 bare2",SHORT)
+    parseOf[Opts]("-a 4 bare1 -a 8 bare2",SHORT) should be ((Opts(Seq(4,8)),Seq("bare1","bare2")))
   }
 
   test("stop") {
-    succeed[Opts]("-a 4 bare1 -a 8 bare2",Opts(Seq(4)),"bare1 -a 8 bare2",SHORT.withStopAtFirstBareWord)
+    parseOf[Opts]("-a 4 bare1 -a 8 bare2",SHORT.withStopAtFirstBareWord) should be ((Opts(Seq(4)),Seq("bare1","-a","8","bare2")))
   }
 }
 

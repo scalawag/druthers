@@ -13,51 +13,27 @@ import ParameterDefaultTest._
 class ParameterDefaultTest extends OptionsParserTest {
 
   test("parameter defaults") {
-    succeed[Opts]("",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts())
-        remains should be (Nil)
-    }
+    parseOf[Opts]("",SHORT) should be ((Opts(),Nil))
   }
 
   test("parameter defaults - specify string") {
-    succeed[Opts]("-a other",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts(a = "other"))
-        remains should be (Nil)
-    }
+    parseOf[Opts]("-a other",SHORT) should be ((Opts(a = "other"),Nil))
   }
 
   test("parameter defaults - specify int") {
-    succeed[Opts]("-b 16",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts(b = 16))
-        remains should be (Nil)
-    }
+    parseOf[Opts]("-b 16",SHORT) should be ((Opts(b = 16),Nil))
   }
 
   test("parameter defaults - specify float") {
-    succeed[Opts]("-c 12",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts(c = 12f))
-        remains should be (Nil)
-    }
+    parseOf[Opts]("-c 12",SHORT) should be ((Opts(c = 12f),Nil))
   }
 
   test("parameter defaults - specify sequence") {
-    succeed[Opts]("-d o -d p",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts(d = Seq("o","p")))
-        remains should be (Nil)
-    }
+    parseOf[Opts]("-d o -d p",SHORT) should be ((Opts(d = Seq("o","p")),Nil))
   }
 
   test("parameter defaults - specify option") {
-    succeed[Opts]("-e 15",SHORT) {
-      case (opts,remains) =>
-        opts should be (Opts(e = Some(15)))
-        remains should be (Nil)
-    }
+    parseOf[Opts]("-e 15",SHORT) should be ((Opts(e = Some(15)),Nil))
   }
 }
 

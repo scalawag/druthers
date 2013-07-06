@@ -9,125 +9,114 @@ import SeqIntTest._
 class SeqIntTest extends OptionsParserTest {
 
   test("short - present") {
-    succeed[Opts]("-a42 -a 7 bare",Opts(Seq(42,7)),"bare",SHORT)
+    parseOf[Opts]("-a42 -a 7 bare",SHORT) should be ((Opts(Seq(42,7)),Seq("bare")))
   }
 
   test("short - collapse prohibited, fail") {
-    fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesProhibited) {
+    fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesProhibited) match {
       case Seq(MissingValue(spec),UnknownKey("-7")) =>
         spec.key should be ("a")
     }
   }
 
   test("short - collapse prohibited, pass") {
-    succeed[Opts]("-a 42 -a 7",Opts(Seq(42,7)),"",SHORT.withCollapsedValuesProhibited)
+    parseOf[Opts]("-a 42 -a 7",SHORT.withCollapsedValuesProhibited) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("short - collapse required, fail") {
-    fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesRequired) {
+    fail[Opts]("-a 42 -a7",SHORT.withCollapsedValuesRequired) match {
       case Seq(MissingValue(spec)) =>
         spec.key should be ("a")
     }
   }
 
   test("short - collapse required, pass") {
-    succeed[Opts]("-a42 -a7",Opts(Seq(42,7)),"",SHORT.withCollapsedValuesRequired)
+    parseOf[Opts]("-a42 -a7",SHORT.withCollapsedValuesRequired) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("short - absent") {
-    succeed[Opts]("bare",Opts(Seq()),"bare",SHORT)
+    parseOf[Opts]("bare",SHORT) should be ((Opts(Seq()),Seq("bare")))
   }
 
   test("short - cluster, rest is arg (not other keys)") {
-    succeed[Opts]("-a 42 -a7",SHORT.withClustering) { case(opts,remains) =>
-      opts should be (Opts(Seq(42,7)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("-a 42 -a7",SHORT.withClustering) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("short - invalid delimited") {
-    fail[Opts]("-a 42 -a x",SHORT) {
+    fail[Opts]("-a 42 -a x",SHORT) match {
       case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("a")
     }
   }
 
   test("short - invalid non-delimited") {
-    fail[Opts]("-a 42 -ax",SHORT) {
+    fail[Opts]("-a 42 -ax",SHORT) match {
       case Seq(InvalidValue(spec,"x",_)) => spec.key should be ("a")
     }
   }
 
   test("long - present") {
-    succeed[Opts]("--aopt 42 --aopt=7",Opts(Seq(42,7)),"",LONG)
+    parseOf[Opts]("--aopt 42 --aopt=7",LONG) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("long - collapse prohibited, fail") {
-    fail[Opts]("--aopt=42 --aopt 7",LONG.withCollapsedValuesProhibited) {
-      case Seq(UnknownKey("--aopt=42")) => // should fail like this
-    }
+    fail[Opts]("--aopt=42 --aopt 7",LONG.withCollapsedValuesProhibited) should be (Seq(UnknownKey("--aopt=42")))
   }
 
   test("long - collapse prohibited, pass") {
-    succeed[Opts]("--aopt 42 --aopt 7",LONG.withCollapsedValuesProhibited) { case(opts,remains) =>
-      opts should be (Opts(Seq(42,7)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("--aopt 42 --aopt 7",LONG.withCollapsedValuesProhibited) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("long - collapse required, fail") {
-    fail[Opts]("--aopt=42 --aopt 7",LONG.withCollapsedValuesRequired) {
+    fail[Opts]("--aopt=42 --aopt 7",LONG.withCollapsedValuesRequired) match {
       case Seq(MissingValue(spec)) =>
         spec.key should be ("aopt")
     }
   }
 
   test("long - collapse required, pass") {
-    succeed[Opts]("--aopt=42 --aopt=7",LONG.withCollapsedValuesRequired) { case(opts,remains) =>
-      opts should be (Opts(Seq(42,7)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("--aopt=42 --aopt=7",LONG.withCollapsedValuesRequired) should be ((Opts(Seq(42,7)),Nil))
   }
 
   test("long - absent") {
-    succeed[Opts]("bare",Opts(Seq()),"bare",LONG)
+    parseOf[Opts]("bare",LONG) should be ((Opts(Seq()),Seq("bare")))
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=notanum",LONG) {
+    fail[Opts]("--aopt=notanum",LONG) match {
       case Seq(InvalidValue(spec,"notanum",_)) =>
         spec.key should be ("aopt")
     }
   }
 
   test("long - missing values") {
-    fail[Opts]("--aopt",LONG) {
+    fail[Opts]("--aopt",LONG) match {
       case Seq(MissingValue(spec)) =>
         spec.key should be ("aopt")
     }
   }
 
   test("long - values separated by comma") {
-    succeed[Opts]("--aopt 42,7,404",Opts(Seq(42,7,404)),"",LONG.withValueDelimiter(","))
+    parseOf[Opts]("--aopt 42,7,404",LONG.withValueDelimiter(",")) should be ((Opts(Seq(42,7,404)),Nil))
   }
 
   test("long - values separated by colon") {
-    succeed[Opts]("--aopt 42:7:404",Opts(Seq(42,7,404)),"",LONG.withValueDelimiter(":"))
+    parseOf[Opts]("--aopt 42:7:404",LONG.withValueDelimiter(":")) should be ((Opts(Seq(42,7,404)),Nil))
   }
 
   test("long - values separated by regexp") {
-    succeed[Opts]("--aopt 42delim7another404",Opts(Seq(42,7,404)),"",LONG.withValueDelimiter("[a-z]+"))
+    parseOf[Opts]("--aopt 42delim7another404",LONG.withValueDelimiter("[a-z]+")) should be ((Opts(Seq(42,7,404)),Nil))
   }
 
   test("long - empty individual values separated by comma ignored") {
-    succeed[Opts]("--aopt ,42,,,7,,404",Opts(Seq(42,7,404)),"",LONG.withValueDelimiter(","))
+    parseOf[Opts]("--aopt ,42,,,7,,404",LONG.withValueDelimiter(",")) should be ((Opts(Seq(42,7,404)),Nil))
   }
 
   test("long - no non-empty individual values") {
-    succeed[Opts]("--aopt ,",Opts(Seq()),"",LONG.withValueDelimiter(","))
+    parseOf[Opts]("--aopt ,",LONG.withValueDelimiter(",")) should be ((Opts(Seq()),Nil))
   }
 
   test("long - values separated by comma fails without feature enabled") {
-    fail[Opts]("--aopt 42,7,404",LONG) {
+    fail[Opts]("--aopt 42,7,404",LONG) match {
       case Seq(InvalidValue(spec,"42,7,404",_)) =>
         spec.key should be ("aopt")
     }

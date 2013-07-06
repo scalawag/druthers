@@ -10,66 +10,57 @@ import CounterTest._
 class CounterTest extends OptionsParserTest {
 
   test("short - present") {
-    succeed[Opts]("-a",SHORT) { case(opts,remains) =>
-      opts should be (Opts(Counter(1)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("-a",SHORT) should be ((Opts(Counter(1)),Nil))
   }
 
   test("short - present twice") {
-    succeed[Opts]("-a",SHORT) { case(opts,remains) =>
-      opts should be (Opts(Counter(1)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("-a",SHORT) should be ((Opts(Counter(1))),Nil)
   }
 
   test("short - present with trailing bare word") {
-    succeed[Opts]("-a bare",Opts(Counter(1)),"bare",SHORT)
+    parseOf[Opts]("-a bare",SHORT) should be ((Opts(Counter(1)),Seq("bare")))
   }
 
   test("short - absent") {
-    succeed[Opts]("",Opts(),"",SHORT)
+    parseOf[Opts]("",SHORT) should be ((Opts(),Nil))
   }
 
   test("short - cluster") {
-    succeed[Opts]("-aaa",Opts(Counter(3)),"",SHORT.withClustering)
+    parseOf[Opts]("-aaa",SHORT.withClustering) should be ((Opts(Counter(3)),Nil))
   }
 
   test("short - clustering fails with clustering disabled") {
-    fail[Opts]("-aaa",SHORT) {
+    fail[Opts]("-aaa",SHORT) match {
       case Seq(UnexpectedValue(spec,"aa")) =>
         spec.key should be ("a")
     }
   }
 
   test("long - present") {
-    succeed[Opts]("--aopt",Opts(Counter(1)),"",LONG)
+    parseOf[Opts]("--aopt",LONG) should be ((Opts(Counter(1)),Nil))
   }
 
   test("long - present twice") {
-    succeed[Opts]("--aopt --aopt",LONG) { case(opts,remains) =>
-      opts should be (Opts(Counter(2)))
-      remains should be (Nil)
-    }
+    parseOf[Opts]("--aopt --aopt",LONG) should be ((Opts(Counter(2)),Nil))
   }
 
   test("long - present with trailing bare word") {
-    succeed[Opts]("--aopt bare",Opts(Counter(1)),"bare",LONG)
+    parseOf[Opts]("--aopt bare",LONG) should be ((Opts(Counter(1)),Seq("bare")))
   }
 
   test("long - absent") {
-    succeed[Opts]("",Opts(),"",LONG)
+    parseOf[Opts]("",LONG) should be ((Opts(),Nil))
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=true",LONG) {
+    fail[Opts]("--aopt=true",LONG) match {
       case Seq(UnexpectedValue(spec,"true")) =>
         spec.key should be ("aopt")
     }
   }
 
   test("long - specify illegal value (empty)") {
-    fail[Opts]("--aopt=",LONG) {
+    fail[Opts]("--aopt=",LONG) match {
       case Seq(UnexpectedValue(spec,"")) =>
         spec.key should be ("aopt")
     }
