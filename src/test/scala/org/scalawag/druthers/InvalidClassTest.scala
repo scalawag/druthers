@@ -21,6 +21,7 @@ object InvalidClassTest {
   case class BadSeqCounter(a:Seq[Boolean])
   case class BadOptionCounter(a:Option[Boolean])
   case class BadBigInt(a:BigInt)
+  case class BadAmbiguousShortKeys(ax:String,ay:String)
 }
 
 import InvalidClassTest._
@@ -58,6 +59,12 @@ class InvalidClassTest extends FunSuite with ShouldMatchers {
   test("reject BigInt field") {
     intercept[IllegalArgumentException] {
       new OptionsParser[BadBigInt]
+    }
+  }
+
+  test("reject ambiguous short keys") {
+    intercept[IllegalArgumentException] {
+      new OptionsParser[BadAmbiguousShortKeys]
     }
   }
 }

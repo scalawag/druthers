@@ -63,6 +63,12 @@ class IntTest extends OptionsParserTest {
     }
   }
 
+  test("short - duplicate value failure") {
+    fail[Opts]("-a 42 -b 7 -a 8",SHORT) match {
+      case Seq(DuplicateValue(spec,42,8)) => spec.key should be ("a")
+    }
+  }
+
   test("long - present") {
     parseOf[Opts]("--aopt 42 --bopt=7",LONG) should be ((Opts(42,7),Nil))
   }
@@ -80,9 +86,12 @@ class IntTest extends OptionsParserTest {
 
   test("long - collapse required, fail") {
     fail[Opts]("--aopt=42 --bopt 7",LONG.withCollapsedValuesRequired) match {
-      case Seq(MissingValue(spec)) =>
-        spec.key should be ("bopt")
+      case Seq(MissingValue(spec)) => spec.key should be ("bopt")
     }
+  }
+
+  test("long - collapse required, fail with unknown key") {
+    fail[Opts]("--aopt=42 --bopt=7 --blah=8",LONG.withCollapsedValuesRequired) should be (Seq(UnknownKey("--blah")))
   }
 
   test("long - collapse required, pass") {

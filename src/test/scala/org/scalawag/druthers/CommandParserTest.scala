@@ -20,6 +20,8 @@ object CommandParserTest {
 
   case class DefaultParameters(a:String = "A",b:Int = 2,c:Float = 3f,d:Seq[String] = Seq("x","y","z"),e:Option[Int] = Some(42))
   case class DefaultParametersWithRequired(a:String = "A",b:Int)
+
+  case class BooleanArguments(a:Boolean,b:Boolean)
 }
 
 import CommandParserTest._
@@ -43,6 +45,21 @@ class CommandParserTest extends ParserTest {
       case Seq(InvalidArgument(arg,"a",_)) => arg.name should be ("a")
     }
   }
+
+  test("Boolean arguments") {
+    parseOf[BooleanArguments]("true true") should be (BooleanArguments(true,true))
+  }
+
+  test("Boolean arguments - invalid") {
+    fail[BooleanArguments]("blurt true") match {
+      case Seq(InvalidArgument(arg,"blurt",_)) => arg.name should be ("a")
+    }
+  }
+
+  test("extraneous arguments") {
+    fail[BooleanArguments]("false true blurt blart") should be (Seq(ExtraneousValues(List("blurt","blart"))))
+  }
+
 
   test("Options are greedy") {
     parseOf[GreedyOption]("a b") should be (GreedyOption(Some("a"),Seq("b")))
