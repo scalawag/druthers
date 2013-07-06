@@ -1,5 +1,7 @@
 package org.scalawag.druthers
 
+import scala.language.postfixOps
+
 import scala.reflect.runtime.universe._
 import scala.util.Try
 import org.scalawag.timber.api.style.slf4j
@@ -34,7 +36,9 @@ object OptionsParser {
     }
   }
 
-  private val WordRE = "( *)([^ ]+)(.*)".r
+  private val WordGrabber = "( *)([^ ]+)(.*)".r
+  private val CharPopper = "(.)(.*)".r
+  private val NoPrefix = "no-(.*)".r
 }
 
 class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends Parser[C] with slf4j.Logging {
@@ -95,314 +99,325 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     (specsWithDefaults,specMap)
   }
 
-  def parseInternal(args:List[String]) = {
-    var remainingArgs = args
-    var inOptionCluster = false
-    var currentSpec:Option[OptionSpec] = None
-    var values:Map[OptionSpec,Any] = Map.empty
-    var bareWords:List[String] = Nil
-    var errors:List[UsageError] = Nil
+  private[this] case class Parse(values:Map[OptionSpec,Any] = Map.empty,
+                                 bareWords:List[String] = Nil,
+                                 errors:Seq[UsageError] = Nil) {
 
-    def incrementValue(spec:OptionSpec) =
-      values.get(spec) match {
-        case None =>
-          values += ( spec -> 1 )
-        case Some(existing) =>
-          values += ( spec -> ( existing.asInstanceOf[Int] + 1 ) )
+    private[this] def setValue(spec:OptionSpec,value:Any) = {
+      copy(values = values + ( spec -> value ))
     }
 
-    def addValue(spec:OptionSpec,value:Any) {
+    private[this] def incrementValue(spec:OptionSpec) =
+      values.get(spec) match {
+        case None =>
+          setValue(spec,1)
+        case Some(existing) =>
+          setValue(spec,existing.asInstanceOf[Int] + 1)
+    }
+
+    private def addValue(spec:OptionSpec,value:Any) = {
       values.get(spec) match {
         case None => spec.cardinality match {
-          case Cardinality.MULTIPLE =>
-            values += ( spec -> Seq(value) )
-          case Cardinality.OPTIONAL =>
-            values += ( spec -> Some(value) )
-          case Cardinality.REQUIRED =>
-            values += ( spec -> value )
-        }
+            case Cardinality.MULTIPLE =>
+              setValue(spec,Seq(value))
+            case Cardinality.OPTIONAL =>
+              setValue(spec,Some(value))
+            case Cardinality.REQUIRED =>
+              setValue(spec,value)
+          }
 
         case Some(existing) => spec.cardinality match {
           case Cardinality.MULTIPLE =>
-            values += ( spec -> ( existing.asInstanceOf[Seq[Any]] :+ value ) )
+            setValue(spec,existing.asInstanceOf[Seq[Any]] :+ value)
           case _ =>
-            errors :+= DuplicateValue(spec,existing,value)
+            addError(DuplicateValue(spec,existing,value))
         }
       }
     }
 
-    def addConvertedValue(spec:OptionSpec,stringValue:String,converter:String => Any) {
+    private def addConvertedValue(spec:OptionSpec,stringValue:String,converter:String => Any) = {
       Try(converter(stringValue)) match {
         case Success(value) =>
           addValue(spec,value)
         case Failure(ex) =>
-          errors :+= InvalidValue(spec,stringValue,ex.getLocalizedMessage)
+          // We just need a value to prevent a MissingKey error as well.  It doesn't have to be the right type
+          // because, with errors, we'll never get as far as trying to cast them to the right type to call
+          // the constructor.
+          addError(InvalidValue(spec,stringValue,ex.getLocalizedMessage)).addValue(spec,stringValue)
       }
     }
 
-    def addStringValue(spec:OptionSpec,stringValue:String) {
-      val converter:(String => Any) = spec.argType match {
-        case Type.STRING => { s:String => s }
-        case Type.INTEGER => { s:String => s.toInt }
-        case Type.FLOAT => { s:String => s.toFloat }
-        case at => throw new IllegalStateException(s"internal error: spec $spec should never use this method")
-      }
+    def consumeSpec(spec:OptionSpec,key:String):Parse = consumeSpec(spec,Some(key))
 
-      cfg.valueDelimiter match {
-        case Some(delim) =>
-          stringValue.split(delim).filter(_.length > 0 ).foreach { individual =>
-            addConvertedValue(spec,individual,converter)
-          }
-        case None =>
-          addConvertedValue(spec,stringValue,converter)
-      }
-    }
-
-    val NoPrefixRE = "no-(.*)".r
-
-    def getSpecs(key:String):Seq[OptionSpec] = {
-      specMap.get(key) match {
-        case Some(spec) =>
-          Seq(spec)
-        case None =>
-          if ( cfg.abbreviations ) {
-            specs.filter(_.key.startsWith(key))
-          } else {
-            Nil
-          }
-      }
-    }
-
-    // returns success
-    def forSpec(key:String)(fn:OptionSpec => Unit) = {
-      finishKey
-      getSpecs(key) match {
-        case Seq(spec) =>
-          fn(spec)
-          true
-        case Nil =>
-          errors :+= UnknownKey(cfg.optionPrefix + key)
-          false
-        case all =>
-          errors :+= AmbiguousKey(cfg.optionPrefix + key,all)
-          false
-      }
-    }
-
-    def forNoSpec(noKey:String) = {
-      finishKey
-      noKey match {
-        case NoPrefixRE(key) if cfg.booleansNegatedByNoPrefix =>
-          getSpecs(key).filter(_.argType == Type.BOOLEAN) match {
-            case Nil =>
-              false
-            case Seq(spec) =>
-              addValue(spec,false)
-              true
-            case all =>
-              errors :+= AmbiguousKey(cfg.optionPrefix + noKey,all)
-              true
-          }
-        case _ =>
-          false
-      }
-    }
-
-    def consumeKeyAndValue(spec:OptionSpec,value:String) {
-      finishKey
-
+    def consumeSpec(spec:OptionSpec,key:Option[String] = None):Parse =
       spec.argType match {
         case Type.BOOLEAN =>
-          errors :+= UnexpectedValue(spec,value)
+          // It's kind of weird to handle the negation here but it's keeps the rest of the code cleaner.
+          // Almost none of it cares about the value implied by the key that was used to find the spec.
+          val v = key match {
+            // The only implication is that if the key specified without a "no-" prefix matches the real
+            // key for the spec, the implied value is "false."  Otherwise, the implied value is true
+            case Some(NoPrefix(realKey)) if spec.key startsWith realKey => false
+            case _ => true
+          }
+          addValue(spec,v)
         case Type.COUNTER =>
-          errors :+= UnexpectedValue(spec,value)
-        case _ =>
-          addStringValue(spec,value)
-      }
-    }
-
-    def consumeKey(spec:OptionSpec) {
-      finishKey
-
-      spec.argType match {
-        case Type.BOOLEAN =>
-          log.debug(s"Got boolean key ${spec.key}, adding true value")
-          addValue(spec,true)
-        case Type.COUNTER =>
-          log.debug(s"Got counter key ${spec.key}, incrementing value")
           incrementValue(spec)
         case _ =>
-          if ( ! cfg.useLongKeys && cfg.mustCollapseValues ) {
-            errors :+= MissingValue(spec)
-          } else {
-            log.debug(s"Got key ${spec.key}, waiting for value(s)")
-            currentSpec = Some(spec)
+          // We just need a value to prevent a MissingKey error as well.  It doesn't have to be the right type
+          // because, with errors, we'll never get as far as trying to cast them to the right type to call
+          // the constructor.
+          addError(MissingValue(spec)).addValue(spec,false)
+      }
+
+    def consumeSpecAndValue(spec:OptionSpec,stringValue:String) =
+      spec.argType match {
+        case Type.BOOLEAN => addError(UnexpectedValue(spec,stringValue))
+        case Type.COUNTER => addError(UnexpectedValue(spec,stringValue))
+        case _ =>
+          val converter:(String => Any) = spec.argType match {
+            case Type.STRING => { s:String => s }
+            case Type.INTEGER => { s:String => s.toInt }
+            case Type.FLOAT => { s:String => s.toFloat }
+            case at => throw new IllegalStateException(s"internal error: spec $spec should never use this method")
+          }
+
+          cfg.valueDelimiter match {
+            case Some(delim) =>
+              stringValue.split(delim).filter(_.length > 0 ).foldLeft(this) { case (me,individual) =>
+                me.addConvertedValue(spec,individual,converter)
+              }
+            case None =>
+              addConvertedValue(spec,stringValue,converter)
           }
       }
-    }
 
-    def finishKey {
-      // Raise an error if the last spec never got its value(s)
-      currentSpec map { cf =>
-        errors :+= MissingValue(cf)
-      }
-      // Mark that we're able to start a new spec now
-      currentSpec = None
-    }
+    def consumeBareWords(words:Seq[String]) = this.copy(bareWords = bareWords ++ words)
 
-    var done = false
-    // max number of iterations we'll allow (guarding against infinite loops)
-    var iters = args.map(_.length).fold(10)(_+_)
+    def consumeBareWord(word:String) = this.copy(bareWords = bareWords :+ word)
 
-    def checkForInfiniteLoop {
-      iters -= 1
-      if ( iters < 0 )
-        throw new IllegalStateException("This appears to be a bug in druthers, seems like an infinite loop.")
-    }
+    def addError(error:UsageError) = this.copy(errors = errors :+ error)
+  }
 
-    while ( ! done ) {
-      log.debug("PARSE: " + remainingArgs.mkString(" "))
-      currentSpec match {
-        case None => remainingArgs match {
+  private[this] def buildConstructorArgs(parse:Parse):(Parse,List[Any]) = {
 
-          case Nil =>
-            log.debug(s"No more tokens, returning")
-            done = true
+    def helper(parse:Parse,specs:List[OptionSpec],constructorArgs:List[Any]):(Parse,List[Any]) =
+      specs match {
+        case Nil =>
+          (parse,constructorArgs)
+        case spec :: tail =>
+          val value = parse.values.get(spec)
 
-          case head :: tail if head.startsWith(cfg.optionPrefix) && head.length > cfg.optionPrefix.length =>
-            val bareHead = head.substring(cfg.optionPrefix.length)
+          def continue(arg:Any) = helper(parse,tail,arg :: constructorArgs)
+          def fail(error:UsageError) = helper(parse.copy(errors = parse.errors :+ error),tail,null :: constructorArgs)
 
-            // found an arg that starts with the option prefix
-            if ( cfg.useLongKeys ) {
-              // try to separate it into key and value at '=' if that's possible
-              if ( cfg.mayCollapseValues ) {
-                bareHead.split("=",2) match {
-                  // arg is separable into key and value with '='
-                  case Array(key,value) =>
-                    forSpec(key)(consumeKeyAndValue(_,value))
-                  // arg contains no '=' and it's required
-                  case Array(key) if cfg.mustCollapseValues =>
-                    forSpec(key) { spec =>
-                      errors :+= MissingValue(spec)
-                    }
-                  // arg contains no '=' but we didn't need it (it was optional)
-                  case Array(key) =>
-                    forNoSpec(bareHead) || forSpec(key)(consumeKey)
+          spec.argType match {
+            case Type.BOOLEAN => continue(value.getOrElse(false))
+            case Type.COUNTER => continue(Counter(value.getOrElse(0).asInstanceOf[Int]))
+            case _ => spec.cardinality match {
+              case Cardinality.MULTIPLE => continue(firstDefinedOf(value,spec.default).getOrElse(Nil))
+              case Cardinality.OPTIONAL => continue(firstDefinedOf(value,spec.default).getOrElse(None))
+              case Cardinality.REQUIRED =>
+                firstDefinedOf(value,spec.default) match {
+                  case Some(v) => continue(v)
+                  case None => fail(MissingRequiredKey(spec))
                 }
-              } else {
-                // long key must appear in an arg by itself (no '=', no value)
-                forNoSpec(bareHead) || forSpec(bareHead)(consumeKey)
-              }
-            } else { // use short keys
-              // This var will keep track of the rest of the arg we still have to parse
-              var rest = bareHead
-
-              while ( ! rest.isEmpty ) {
-                log.debug("REST: " + rest)
-                // Look at the first character to get the (maybe first) key
-                var k = rest.substring(0,1)
-                rest = rest.tail
-
-                forSpec(k) { spec =>
-                  // This expression basically just says that, if there's more stuff following
-                  // the key and we're allow to COLLAPSE TODO the key is expecting a value or clustering is disabled, then treat the
-                  // following stuff as the value for the key.  Otherwise, consume the key
-                  // and wait for its value to follow.  Note that, in some cases, this will
-                  // cause an error to be raised but that's exactly what should happen in
-                  // those cases.
-                  if ( !rest.isEmpty && cfg.mayCollapseValues && ( spec.requiresValue || !cfg.clustering ) ) {
-                    consumeKeyAndValue(spec,rest)
-                    rest = ""
-                  } else {
-                    consumeKey(spec)
-                  }
-                }
-
-                checkForInfiniteLoop
-              }
             }
-            remainingArgs = tail
-
-          case head :: tail if currentSpec.isDefined =>
-            // TODO: handle other cases like multiple appearances set multiple values
-            addStringValue(currentSpec.get,head)
-            currentSpec = None
-            remainingArgs = tail
-
-          case head :: tail if inOptionCluster =>
-            // First character should be treated as a option key
-            forSpec(head.head.toString)(consumeKey)
-
-          case head :: tail if cfg.stopAtFirstBareWord =>
-            done = true
-
-          case head :: tail =>
-            bareWords :+= head
-            remainingArgs = tail
-        }
-
-        case Some(spec) => remainingArgs match {
-          case Nil =>
-            finishKey
-
-          case head :: tail if head.startsWith(cfg.optionPrefix) =>
-            finishKey
-
-          case head :: tail =>
-            log.debug(s"Collecting value $head for spec $spec")
-            addStringValue(spec,head)
-            currentSpec = None
-            remainingArgs = tail
-        }
+          }
       }
 
-      checkForInfiniteLoop
+    helper(parse,specs.reverse,Nil)
+  }
+
+  // Used to match args against the option prefix and remove it
+
+  private[this] object OptionPrefix {
+    def unapply(arg:String) =
+      if ( arg.startsWith(cfg.optionPrefix) && arg.length > cfg.optionPrefix.length )
+        Some(arg.substring(cfg.optionPrefix.length))
+      else None
+  }
+
+  private[this] def withKey(key:String):Either[OptionSpec,UsageError] = {
+
+    val matchingSpecs = firstNonEmptyOf(
+      // If there's an exact match, look no further.  Consider only this one.
+      specMap.get(key).toSeq,
+      // If "no-" is enabled and there's an exact match (that's a boolean), look no further.
+      key match {
+        case NoPrefix(realKey) if cfg.booleansNegatedByNoPrefix =>
+          specMap.get(realKey).filter(_.argType == Type.BOOLEAN).toSeq
+        case _ => Nil
+      },
+      // If we couldn't find an exact match, look for anything that starts with the string passed in (or the
+      // negated version, if that's allowed).
+      if ( cfg.abbreviations ) {
+        val matchingPositives = specs.filter(_.key.startsWith(key))
+        val matchingNegatives = key match {
+          case NoPrefix(realKey) if cfg.booleansNegatedByNoPrefix =>
+            specs.filter(_.argType == Type.BOOLEAN).filter(_.key.startsWith(realKey))
+          case _ => Nil
+        }
+        matchingPositives ++ matchingNegatives
+      } else {
+        Nil
+      }
+    )
+
+    matchingSpecs match {
+      case Seq(spec) =>
+        Left(spec)
+      case Nil =>
+        Right(UnknownKey(cfg.optionPrefix + key))
+      case all =>
+        Right(AmbiguousKey(cfg.optionPrefix + key,all))
+    }
+  }
+
+  private[this] def parseRec(args:List[String],parse:Parse = Parse()):Parse = {
+    log.debug(s"PARSE: $args $parse")
+
+    args match {
+
+      case Nil =>
+        log.debug(s"No more args, returning")
+        parse
+
+      case OptionPrefix(argHead) :: argTail =>
+        def consumeOneArg(p:Parse) = parseRec(argTail,p)
+        def consumeTwoArgs(p:Parse) = parseRec(argTail.tail,p)
+
+        // found an arg that starts with the option prefix
+        if ( cfg.useLongKeys ) {
+
+          // Try to separate it into key and value at '=' if that's possible (and we're allowed)
+
+          val collapsed =
+            if ( cfg.mayCollapseValues ) {
+              val p = argHead.split("=",2) match {
+
+                // arg is separable into key and value with '='
+                case Array(key,value) =>
+                  Some(withKey(key) match {
+                    case Left(spec) => parse.consumeSpecAndValue(spec,value)
+                    case Right(error) => parse.addError(error)
+                  })
+
+                // arg contains no '=' and it's required
+                case Array(key) if cfg.mustCollapseValues =>
+                  Some(withKey(key) match {
+                    case Left(spec) => parse.consumeSpec(spec,key)
+                    case Right(error) => parse.addError(error)
+                  })
+
+                // This is not a case of a collapsed value (nor was it required to be).
+                // 'None' here signals that getOrElse block below should handle this arg.
+                case _ => None
+
+              }
+
+              p.map(consumeOneArg) // each of the above blocks consumes exactly one arg
+            } else {
+              None
+            }
+
+          // If collapsing is not required or this arg didn't contain an '=' (the above block
+          // didn't return a next parse), just handle the arg as a key and use the next arg as
+          // the value.
+
+          collapsed.getOrElse {
+            withKey(argHead) match {
+              case Left(spec) =>
+                if ( ! spec.requiresValue || argTail.isEmpty || argTail.head.startsWith(cfg.optionPrefix) ) {
+                  val p = parse.consumeSpec(spec,argHead)
+                  consumeOneArg(p)
+                } else {
+                  val p = parse.consumeSpecAndValue(spec,argTail.head)
+                  consumeTwoArgs(p)
+                }
+              case Right(error) =>
+                val p = parse.addError(error)
+                consumeOneArg(p)
+            }
+          }
+
+        } else { // use short keys
+
+          argHead match {
+            case CharPopper(charHead,charTail) =>
+
+              def consumeOneLetterOnly(p:Parse) = {
+                // Fake this out so that the parser will think that the rest of this argument was the
+                // start of a new option.
+                val manufacturedArgs = ( cfg.optionPrefix + charTail ) +: argTail
+                parseRec(manufacturedArgs,p)
+              }
+
+              withKey(charHead) match {
+
+                case Left(spec) =>
+                  if ( charTail.isEmpty ) {
+                    // There's nothing following the key in this arg.  There either has to be no value or the value
+                    // lives in the next argument.
+                    if ( !spec.requiresValue || cfg.mustCollapseValues || argTail.isEmpty || argTail.head.startsWith(cfg.optionPrefix) ) {
+                      val p = parse.consumeSpec(spec)
+                      consumeOneArg(p)
+                    } else {
+                      val p = parse.consumeSpecAndValue(spec,argTail.head)
+                      consumeTwoArgs(p)
+                    }
+                  } else {
+                    if ( cfg.mayCollapseValues && ( spec.requiresValue || !cfg.clustering ) ) {
+                      val p = parse.consumeSpecAndValue(spec,charTail)
+                      consumeOneArg(p)
+                    } else {
+                      val p = parse.consumeSpec(spec)
+                      consumeOneLetterOnly(p)
+                    }
+                  }
+
+                case Right(error) =>
+                  val p = parse.addError(error)
+                  consumeOneLetterOnly(p)
+
+              }
+          }
+        }
+
+      case rest if cfg.stopAtFirstBareWord =>
+        parse.consumeBareWords(rest)
+
+      case argHead :: argTail =>
+        val p = parse.consumeBareWord(argHead)
+        parseRec(argTail,p) // consume one arg
+    }
+  }
+
+  def parse(args:List[String]):(C,List[String]) = {
+
+    // Parse and attempt to extract a list of constructor arguments from the results
+
+    val (parse,constructorArgs) = buildConstructorArgs(parseRec(args))
+
+    log.debug { pw:PrintWriter =>
+      pw.println("OPTIONS PARSER RESULTS:")
+      pw.println("  VALUES:")
+      ( specs zip constructorArgs) foreach { case (f,ca) =>
+        pw.println(s"    $f => $ca")
+      }
+      pw.println("  ERRORS:")
+      parse.errors foreach { e =>
+        pw.println(s"    $e")
+      }
     }
 
-    if ( ! errors.isEmpty ) {
-      throw new UsageException(errors)
-    } else {
-      (values,bareWords ++ remainingArgs)
-    }
+    if ( ! parse.errors.isEmpty )
+      throw new UsageException(parse.errors)
+
+    (instantiate(constructorArgs),parse.bareWords)
   }
 
   def parse(args:Array[String]):(C,List[String]) = parse(args.toList)
-
-  def parse(args:List[String]):(C,List[String]) = {
-    val (valuesMap,remains) = parseInternal(args)
-
-    // TODO: combine this with the one in parseInternal for one list of errors
-    var errors:List[UsageError] = Nil
-
-    val constructorArgs = specs map { spec =>
-      val value = valuesMap.get(spec)
-
-      spec.argType match {
-        case Type.BOOLEAN => value.getOrElse(false)
-        case Type.COUNTER => Counter(value.getOrElse(0).asInstanceOf[Int])
-        case _ => spec.cardinality match {
-          case Cardinality.MULTIPLE => firstDefinedOf(value,spec.default).getOrElse(Nil)
-          case Cardinality.OPTIONAL => firstDefinedOf(value,spec.default).getOrElse(None)
-          case Cardinality.REQUIRED =>
-            firstDefinedOf(value,spec.default).getOrElse {
-              errors :+= MissingRequiredKey(spec)
-            }
-        }
-      }
-    }
-
-    log.debug { pw:PrintWriter =>
-      pw.println("PARSE RESULTS:")
-      ( specs zip constructorArgs) foreach { case (f,ca) =>
-        pw.println(s"  $f => $ca")
-      }
-    }
-
-    if ( ! errors.isEmpty )
-      throw new UsageException(errors)
-
-    (instantiate(constructorArgs),remains)
-  }
 
   def usage(totalWidth:Int = 120,indent:Int = 2,gap:Int = 6) = {
     val column1 = specs map { f =>
@@ -450,11 +465,10 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     }
   }
 
-
   private def wordWrap(text:String,width:Int) = {
     @tailrec
     def helper(in:String,lines:Seq[String] = Nil):Seq[String] = in match {
-      case WordRE(space,word,rest) =>
+      case WordGrabber(space,word,rest) =>
         lines match {
           case Nil =>
             helper(rest,Seq(word))
@@ -470,14 +484,14 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
     helper(text).reverse
   }
 
-  def unapply(args:Array[String]):Option[(C,List[String])] = unapply(args.toList)
-
   def unapply(args:List[String]):Option[(C,List[String])] =
     try {
       Some(parse(args))
     } catch {
       case ex:UsageException if cfg.quietMode => None
     }
+
+  def unapply(args:Array[String]):Option[(C,List[String])] = unapply(args.toList)
 
   private def uncamelCase(s:String) = s flatMap { c =>
     if ( c.isUpper )
@@ -487,6 +501,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions()) extends
   }
 
   private def firstDefinedOf[A](items:Option[A]*) = items.flatten.headOption
+  private def firstNonEmptyOf[A](items:Seq[A]*) = items.find(!_.isEmpty).getOrElse(Nil)
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */

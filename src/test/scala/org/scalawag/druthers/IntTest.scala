@@ -69,13 +69,20 @@ class IntTest extends OptionsParserTest {
     }
   }
 
+  test("short - require arg that is itself an option") {
+    fail[Opts]("-a -b 7",SHORT) {
+      case Seq(MissingValue(spec)) => spec.key should be ("a")
+    }
+  }
+
   test("long - present") {
     succeed[Opts]("--aopt 42 --bopt=7",Opts(42,7),"",LONG)
   }
 
   test("long - collapse prohibited, fail") {
     fail[Opts]("--aopt=42 --bopt 7",LONG.withCollapsedValuesProhibited) {
-      case Seq(UnknownKey("--aopt=42")) => // should fail like this
+      case Seq(UnknownKey("--aopt=42"),MissingRequiredKey(spec)) =>
+        spec.key should be ("aopt")
     }
   }
 
@@ -107,9 +114,15 @@ class IntTest extends OptionsParserTest {
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=notanum",LONG) {
+    fail[Opts]("--aopt=notanum --bopt=6",LONG) {
       case Seq(InvalidValue(spec,"notanum",_)) =>
         spec.key should be ("aopt")
+    }
+  }
+
+  test("long - require arg that is itself an option") {
+    fail[Opts]("--aopt --bopt 7",LONG) {
+      case Seq(MissingValue(spec)) => spec.key should be ("aopt")
     }
   }
 }

@@ -12,8 +12,8 @@ class StopAtFirstBareWordTest extends OptionsParserTest {
   }
 
   test("stop") {
+    succeed[Opts]("-a 4 bare1 -a 8 bare2",Opts(Seq(4)),"bare1 -a 8 bare2",SHORT.withStopAtFirstBareWord)
   }
-  succeed[Opts]("-a 4 bare1 -a 8 bare2",Opts(Seq(4)),"bare1 -a 8 bare2",SHORT.withStopAtFirstBareWord)
 }
 
 /* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */

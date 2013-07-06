@@ -75,7 +75,8 @@ class FloatTest extends OptionsParserTest {
 
   test("long - collapse prohibited, fail") {
     fail[Opts]("--aopt=4.2 --bopt 7.1",LONG.withCollapsedValuesProhibited) {
-      case Seq(UnknownKey("--aopt=4.2")) => // should fail like this
+      case Seq(UnknownKey("--aopt=4.2"),MissingRequiredKey(spec)) =>
+        spec.key should be ("aopt")
     }
   }
 
@@ -107,7 +108,7 @@ class FloatTest extends OptionsParserTest {
   }
 
   test("long - specify illegal value") {
-    fail[Opts]("--aopt=notanum",LONG) {
+    fail[Opts]("--aopt=notanum --bopt 4",LONG) {
       case Seq(InvalidValue(spec,"notanum",_)) =>
         spec.key should be ("aopt")
     }
