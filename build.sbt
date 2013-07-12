@@ -7,9 +7,9 @@ name := "druthers"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.10.0"
 
-scalacOptions ++= Seq("-unchecked","-deprecation","-feature")
+scalacOptions ++= Seq("-unchecked","-deprecation","-feature","-target:jvm-1.6")
 
 // Right now, the reflection stuff is not thread-safe so we have to execute our tests in sequence.
 // See: http://docs.scala-lang.org/overviews/reflection/thread-safety.html
@@ -21,7 +21,7 @@ resolvers += "sonatype-oss-snapshots" at "http://oss.sonatype.org/content/reposi
 
 libraryDependencies ++= Seq(
   "org.scalawag.timber" % "timber-api" % "0.3-SNAPSHOT" changing,
-  "org.scala-lang" % "scala-reflect" % "2.10.2",
+  "org.scala-lang" % "scala-reflect" % "2.10.0",
   "org.scalawag.timber" % "timber" % "0.3-SNAPSHOT" % "test" changing,
   "org.mockito" % "mockito-all" % "1.9.5" % "test",
   "org.scalatest" %% "scalatest" % "1.9.1" % "test"
