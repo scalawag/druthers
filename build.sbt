@@ -1,5 +1,6 @@
 import de.johoop.jacoco4sbt._
 import JacocoPlugin._
+import com.typesafe.sbt.osgi.SbtOsgi.OsgiKeys._
 
 organization := "org.scalawag.druthers"
 
@@ -64,5 +65,9 @@ pomExtra :=
   </developers>
 
 seq(jacoco.settings : _*)
+
+osgiSettings
+
+exportPackage += "org.scalawag.druthers"
 
 // druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved
