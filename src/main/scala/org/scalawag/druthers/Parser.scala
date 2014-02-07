@@ -27,7 +27,7 @@ object Parser {
 
 import Parser._
 
-class Parser[C:TypeTag] {
+class Parser[C:TypeTag](classLoader:Option[ClassLoader] = None) {
 
   protected[this] val constructor = {
 
@@ -46,7 +46,7 @@ class Parser[C:TypeTag] {
 
   }
 
-  protected[this] val mirror = runtimeMirror(Thread.currentThread.getContextClassLoader)
+  protected[this] val mirror = runtimeMirror(classLoader.getOrElse(Thread.currentThread.getContextClassLoader))
 
   protected[this] val constructorMirror = {
     val classSymbol = typeOf[C].typeSymbol.asClass
