@@ -5,7 +5,7 @@ organization := "org.scalawag.druthers"
 
 name := "druthers"
 
-version := "0.1-SNAPSHOT"
+version := "0.1.0"
 
 // When I put this at 2.10.0, the tests can't find the scala classes (ever since upgrading to sbt 0.13.0)
 scalaVersion := "2.11.8"
