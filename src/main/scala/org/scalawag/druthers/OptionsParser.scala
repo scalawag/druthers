@@ -213,7 +213,7 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions(),classLoa
           def fail(error:UsageError) = helper(parse.copy(errors = parse.errors :+ error),tail,null :: constructorArgs)
 
           spec.argType match {
-            case Type.BOOLEAN => continue(value.getOrElse(false))
+            case Type.BOOLEAN => continue(firstDefinedOf(value,spec.default).getOrElse(false))
             case Type.COUNTER => continue(Counter(value.getOrElse(0).asInstanceOf[Int]))
             case _ => spec.cardinality match {
               case Cardinality.MULTIPLE => continue(firstDefinedOf(value,spec.default).getOrElse(Nil))

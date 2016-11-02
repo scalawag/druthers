@@ -3,7 +3,7 @@ package org.scalawag.druthers
 object BooleanTest {
   case class Opts(aopt:Boolean = false,
                   bopt:Boolean = false,
-                  copt:Boolean = false)
+                  copt:Boolean = true)
 
   case class AmbiguousOpts(aa:Boolean,aaa:Boolean)
 
