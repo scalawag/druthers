@@ -260,4 +260,4 @@ class CommandParser3[C:TypeTag,P1:TypeTag,P2:TypeTag,P3:TypeTag](cfg:ParserConfi
   }
 }
 
-/* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
+/* druthers -- Copyright 2013-2016 Justin Patterson -- All Rights Reserved */

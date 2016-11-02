@@ -505,4 +505,4 @@ class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions(),classLoa
   private def firstNonEmptyOf[A](items:Seq[A]*) = items.find(!_.isEmpty).getOrElse(Nil)
 }
 
-/* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
+/* druthers -- Copyright 2013-2016 Justin Patterson -- All Rights Reserved */

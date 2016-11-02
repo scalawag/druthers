@@ -15,4 +15,4 @@ abstract class ParserTest extends FunSuite with Matchers {
       s.split("\\s+").toList
 }
 
-/* druthers -- Copyright 2013 Justin Patterson -- All Rights Reserved */
+/* druthers -- Copyright 2013-2016 Justin Patterson -- All Rights Reserved */
