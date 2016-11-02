@@ -1,9 +1,10 @@
 package org.scalawag.druthers
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Matchers}
 
-abstract class ParserTest extends FunSuite with ShouldMatchers {
+abstract class ParserTest extends FunSuite with Matchers {
+  TestLogging // initialize test logging
+
   val SHORT = ParserConfiguration.withShortKeys
   val LONG = ParserConfiguration.withLongKeys
 

@@ -1,7 +1,6 @@
 package org.scalawag.druthers
 
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{FunSuite, Matchers}
 
 object UsageTest {
   case class Opts(@Usage("here's my documentation") a:Int,b:Int)
@@ -20,7 +19,7 @@ object UsageTest {
 
 import UsageTest._
 
-class UsageTest extends FunSuite with ShouldMatchers {
+class UsageTest extends FunSuite with Matchers {
   test("read usage from annotations") {
     val parser = new OptionsParser[Opts](ParserConfiguration.withShortKeys)
     parser.specs(0).usage should be (Some("here's my documentation"))

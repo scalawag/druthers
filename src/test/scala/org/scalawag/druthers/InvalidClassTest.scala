@@ -1,7 +1,6 @@
 package org.scalawag.druthers
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Matchers}
 
 object InvalidClassTest {
   case class EverythingGood(a:Boolean,
@@ -26,7 +25,7 @@ object InvalidClassTest {
 
 import InvalidClassTest._
 
-class InvalidClassTest extends FunSuite with ShouldMatchers {
+class InvalidClassTest extends FunSuite with Matchers {
 
   test("accept everyting good") {
     new OptionsParser[EverythingGood]

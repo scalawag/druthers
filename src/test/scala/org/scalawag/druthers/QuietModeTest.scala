@@ -5,10 +5,11 @@ object QuietModeTest {
 }
 
 import QuietModeTest._
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{FunSuite, Matchers}
 
-class QuietModeTest extends FunSuite with ShouldMatchers {
+class QuietModeTest extends FunSuite with Matchers {
+  TestLogging // initialize test logging
+
   private val config = ParserConfiguration.withShortKeys
 
   test("loud") {

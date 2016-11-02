@@ -1,5 +1,4 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
+import sbt._
 import com.typesafe.sbt.osgi.SbtOsgi.OsgiKeys._
 
 organization := "org.scalawag.druthers"
@@ -9,7 +8,7 @@ name := "druthers"
 version := "0.1-SNAPSHOT"
 
 // When I put this at 2.10.0, the tests can't find the scala classes (ever since upgrading to sbt 0.13.0)
-scalaVersion := "2.10.2"
+scalaVersion := "2.11.8"
 
 scalacOptions ++= Seq("-unchecked","-deprecation","-feature","-target:jvm-1.6")
 
@@ -19,26 +18,24 @@ parallelExecution in Test := false
 
 parallelExecution in jacoco.Config := false
 
-resolvers += "sonatype-oss-snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
+resolvers += Resolver.sonatypeRepo("releases")
 
 libraryDependencies ++= Seq(
-  "org.scalawag.timber" % "timber-api" % "0.3-SNAPSHOT" changing,
-  "org.scala-lang" % "scala-reflect" % "2.10.0",
-  "org.scalawag.timber" % "timber" % "0.3-SNAPSHOT" % "test" changing,
-  "org.mockito" % "mockito-all" % "1.9.5" % "test",
-  "org.scalatest" %% "scalatest" % "1.9.1" % "test"
+  "org.scalawag.timber" %% "timber-api" % "0.6.0",
+  "org.scalawag.timber" %% "timber-backend" % "0.6.0" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 )
 
 publishMavenStyle := true
 
 publishArtifact in Test := false
 
-publishTo <<= version { (v: String) =>
-    val nexus = "https://oss.sonatype.org/"
-    if (v.trim.endsWith("SNAPSHOT"))
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (version.value.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 
 pomIncludeRepository := { _ => false }

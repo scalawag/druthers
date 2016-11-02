@@ -41,9 +41,10 @@ object OptionsParser {
   private val NoPrefix = "no-(.*)".r
 }
 
-class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions(),classLoader:Option[ClassLoader] = None) extends Parser[C](classLoader) with slf4j.Logging {
+class OptionsParser[C:TypeTag](cfg:ParserConfiguration = ShortOptions(),classLoader:Option[ClassLoader] = None) extends Parser[C](classLoader) {
   import OptionsParser._
   import OptionSpec.Type
+  import Logging.log
 
   val (specs:List[OptionSpec],specMap) = {
 
